@@ -1,0 +1,84 @@
+&lt;!doctype html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+&lt;meta charset="utf-8"&gt;&lt;meta name="viewport" content="width=device-width,initial-scale=1"&gt;
+&lt;title&gt;Build with AI | MapleWeb AI&lt;/title&gt;
+&lt;meta name="description" content="Plan your business website with MapleWeb AI in a simple chat."&gt;
+&lt;style&gt;
+:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color-scheme:dark;--bg:#061226;--panel:#102449;--edge:#304e7e;--cyan:#69e4ff;--ink:#f8fbff}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top right,#123e7b,var(--bg) 55%);color:var(--ink)}
+a{color:var(--cyan)}header,main,footer{width:min(900px,calc(100% - 28px));margin:auto}
+header{padding:24px 0;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.brand{font-size:1.3rem;font-weight:850;text-decoration:none;color:white}.brand span{color:var(--cyan)}
+main{padding:35px 0 60px}h1{font-size:clamp(2rem,6vw,3.6rem);line-height:1.12;letter-spacing:-.05em;margin:.3em 0}
+.lead{color:#c4d6f2;font-size:1.07rem;max-width:700px}
+.pill{display:inline-block;font-weight:750;font-size:.82rem;color:var(--cyan);letter-spacing:.08em;text-transform:uppercase}
+.chat{margin-top:32px;background:#0b1c37;border:1px solid var(--edge);border-radius:18px;overflow:hidden;box-shadow:0 18px 42px #0004}
+.chathead{padding:17px 20px;border-bottom:1px solid var(--edge);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.chathead strong{font-size:1.1rem}.small{color:#b4c7e7;font-size:.84rem}
+#messages{height:400px;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:12px}
+.msg{border-radius:14px;padding:12px 15px;max-width:87%;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.52}
+.bot{background:#183257;border:1px solid #335986;align-self:flex-start}.you{background:#1657b9;align-self:flex-end}
+form{display:flex;gap:10px;padding:15px;border-top:1px solid var(--edge)}
+input{flex:1;min-width:0;padding:13px;background:#08142a;color:white;border:1px solid #7291b6;border-radius:10px;font:inherit}
+button{background:#2375e9;color:white;border:0;border-radius:10px;padding:12px 17px;font:inherit;font-weight:750;cursor:pointer;min-height:44px}
+button:hover{background:#328afa}button:disabled{opacity:.5;cursor:not-allowed}button.secondary{background:transparent;border:1px solid #6581ae}
+.notice{margin:16px 0;color:#c5d7ee;font-size:.88rem}
+.prices{margin-top:38px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.price{border:1px solid var(--edge);background:#0d2041;padding:15px;border-radius:12px}
+.price strong{display:block;color:var(--cyan);font-size:1.17rem}.price span{font-size:.9rem;color:#d1dff4}
+footer{padding:15px 0 35px;color:#b7cae5;font-size:.86rem}
+:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
+@media(max-width:640px){.prices{grid-template-columns:repeat(2,1fr)}#messages{height:380px}header{padding:16px 0}}
+@media(max-width:380px){.prices{grid-template-columns:1fr}form{flex-wrap:wrap}form input,form button{width:100%;flex:auto}}
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;header&gt;&lt;a class="brand" href="/index.html"&gt;MapleWeb &lt;span&gt;AI&lt;/span&gt;&lt;/a&gt;&lt;a href="/index.html"&gt;Back to home&lt;/a&gt;&lt;/header&gt;
+&lt;main&gt;
+&lt;span class="pill"&gt;Your Budget. Your Website.&lt;/span&gt;
+&lt;h1&gt;Your Business Deserves a Website That Stands Out.&lt;/h1&gt;
+&lt;p class="lead"&gt;Professional Websites. Smart Design. Real Business Growth. Starting at $500 CAD.&lt;/p&gt;
+&lt;section class="chat" aria-label="Website planning assistant"&gt;
+&lt;div class="chathead"&gt;&lt;div&gt;&lt;strong&gt;Build with AI&lt;/strong&gt;&lt;div class="small"&gt;Interactive website planning assistant&lt;/div&gt;&lt;/div&gt;&lt;button class="secondary" id="restart" type="button"&gt;Start over&lt;/button&gt;&lt;/div&gt;
+&lt;div id="messages" role="log" aria-live="polite" aria-relevant="additions text"&gt;&lt;/div&gt;
+&lt;form id="entry"&gt;&lt;input id="answer" aria-label="Your answer" placeholder="Type your answer here" required maxlength="400" autocomplete="off"&gt;&lt;button id="send" type="submit"&gt;Send&lt;/button&gt;&lt;/form&gt;
+&lt;/section&gt;
+&lt;p class="notice"&gt;&lt;strong&gt;Privacy:&lt;/strong&gt; This is a guided planning chat, not a live AI agent. Answers stay in your browser. Nothing is sent or saved to MapleWeb AI. Copy the final plan to keep it. Do not enter passwords or sensitive information.&lt;/p&gt;
+&lt;h2&gt;Our website prices (CAD)&lt;/h2&gt;
+&lt;div class="prices"&gt;
+&lt;div class="price"&gt;&lt;span&gt;Simple · 1–2 pages&lt;/span&gt;&lt;strong&gt;$500–$800&lt;/strong&gt;&lt;/div&gt;
+&lt;div class="price"&gt;&lt;span&gt;Simple · 3–5 pages&lt;/span&gt;&lt;strong&gt;$900–$1,500&lt;/strong&gt;&lt;/div&gt;
+&lt;div class="price"&gt;&lt;span&gt;Professional · 5–7 pages&lt;/span&gt;&lt;strong&gt;$1,500–$2,200&lt;/strong&gt;&lt;/div&gt;
+&lt;div class="price"&gt;&lt;span&gt;Professional · custom design&lt;/span&gt;&lt;strong&gt;$2,300–$3,000&lt;/strong&gt;&lt;/div&gt;
+&lt;div class="price"&gt;&lt;span&gt;Advanced · booking/payment&lt;/span&gt;&lt;strong&gt;$3,000–$4,500&lt;/strong&gt;&lt;/div&gt;
+&lt;div class="price"&gt;&lt;span&gt;Advanced · store/integrations&lt;/span&gt;&lt;strong&gt;$4,500–$7,000&lt;/strong&gt;&lt;/div&gt;
+&lt;/div&gt;
+&lt;/main&gt;
+&lt;footer&gt;MapleWeb AI · A project plan is not a quote. Final price and scope require review and approval.&lt;/footer&gt;
+&lt;script&gt;
+(function(){
+'use strict';
+var questions=[
+['business','What kind of business do you have? For example: restaurant, salon, consulting, or shop.'],
+['goal','Great! What would you like your website to help your business achieve?'],
+['pages','How many pages would you like? You can say 1, 3–5, 5–7, or not sure.'],
+['features','Which features do you need? For example: contact form, gallery, bookings, payments, online store, or none.'],
+['budget','What is your approximate budget in Canadian dollars? Starting at $500 CAD.'],
+['style','What colours or style do you prefer? For example: modern blue, elegant black, or colourful.']
+];
+var step=0,answers={},finished=false;
+var log=document.getElementById('messages'),input=document.getElementById('answer'),form=document.getElementById('entry'),send=document.getElementById('send');
+var summary='';
+function bubble(text,kind){var el=document.createElement('div');el.className='msg '+kind;el.textContent=text;log.appendChild(el);log.scrollTop=log.scrollHeight;}
+function ask(){bubble(questions[step][1],'bot');input.placeholder=step===4?'Example: 1500':'Type your answer here';input.focus();}
+function start(){step=0;answers={};finished=false;summary='';log.textContent='';input.value='';input.disabled=false;send.disabled=false;bubble('Welcome! I can help plan your website. I will ask one question at a time and respond to your answers.','bot');ask();}
+function budgetComment(value){var amount=Number(value.replace(/[^0-9.]/g,''));if(!Number.isFinite(amount)||amount&lt;=0)return 'Thanks. We can review your budget together.';if(amount&lt;500)return 'Our current website projects start at $500 CAD. We can discuss options, but we cannot promise a project below that amount.';if(amount&lt;=800)return 'That fits our $500–$800 simple 1–2 page range, depending on scope.';if(amount&lt;=1500)return 'That may fit our $900–$1,500 simple 3–5 page range, depending on scope.';if(amount&lt;=2200)return 'That may fit our $1,500–$2,200 professional 5–7 page range.';if(amount&lt;=3000)return 'That may fit our $2,300–$3,000 professional custom design range.';if(amount&lt;=4500)return 'That may fit our $3,000–$4,500 advanced booking or payment range.';return 'Our online store/integration projects are generally $4,500–$7,000. Larger work needs a custom review.';}
+function reply(key,value){if(key==='business')return 'Nice! A website for your '+value+' business can help customers understand what you offer.';if(key==='goal')return 'That is a useful goal. I will include it in your website plan.';if(key==='pages')return 'Understood. We will plan for '+value+' pages and confirm the final page count later.';if(key==='features')return /booking|payment|store|shop|commerce/i.test(value)?'Those features may need advanced development or third-party fees. We will review them before any work starts.':'Good choice. I have noted those features.';if(key==='budget')return budgetComment(value);return 'Thanks! I will use '+value+' as your design preference.';}
+function finish(){finished=true;input.disabled=true;send.disabled=true;summary='MapleWeb AI — Website Planning Summary\nBusiness: '+answers.business+'\nGoal: '+answers.goal+'\nPages: '+answers.pages+'\nFeatures: '+answers.features+'\nBudget (CAD): '+answers.budget+'\nStyle: '+answers.style+'\n\nThis is a planning summary, not a confirmed quote or a submitted request. Scope, timeline, and costs require review. No project will be published without approval.';bubble('Here is your website plan:\n\n'+summary,'bot');var button=document.createElement('button');button.textContent='Copy my website plan';button.type='button';button.className='secondary';button.onclick=function(){if(navigator.clipboard&amp;&amp;navigator.clipboard.writeText){navigator.clipboard.writeText(summary).then(function(){button.textContent='Plan copied!';}).catch(function(){button.textContent='Select and copy the plan above';});}else{button.textContent='Select and copy the plan above';}};log.appendChild(button);log.scrollTop=log.scrollHeight;}
+form.addEventListener('submit',function(e){e.preventDefault();if(finished)return;var value=input.value.trim();if(!value)return;bubble(value,'you');input.value='';var key=questions[step][0];answers[key]=value;bubble(reply(key,value),'bot');step++;if(step&lt;questions.length)ask();else finish();});
+document.getElementById('restart').addEventListener('click',start);
+start();
+})();
+&lt;/script&gt;
+&lt;/body&gt;&lt;/html&gt;
