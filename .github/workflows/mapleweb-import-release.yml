@@ -1,0 +1,107 @@
+name: MapleWeb AI Deployment Agent - import verified source
+on:
+  push:
+    branches:
+      - mapleweb-ai-agents
+    paths:
+      - releases/mapleweb-ai-two-workers-staging-release.zip
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: mapleweb-import-release
+  cancel-in-progress: false
+jobs:
+  import-tested-release:
+    if: github.ref == 'refs/heads/mapleweb-ai-agents'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out development branch only
+        uses: actions/checkout@v4
+        with:
+          ref: mapleweb-ai-agents
+          persist-credentials: true
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify exact approved source archive
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/mapleweb-ai-agents'
+          test -f releases/mapleweb-ai-two-workers-staging-release.zip
+          echo 'a8a56d2a126ef0482cda19dd34686508cb0536dc95a5210dafa4316c317c0831  releases/mapleweb-ai-two-workers-staging-release.zip' | sha256sum -c -
+          unzip -t releases/mapleweb-ai-two-workers-staging-release.zip
+      - name: Extract safely, verify individual files against release checksum list
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/mapleweb-release"
+          python3 - <<'PY'
+          import hashlib, pathlib, zipfile
+          source=pathlib.Path('releases/mapleweb-ai-two-workers-staging-release.zip')
+          target=pathlib.Path(__import__('os').environ['RUNNER_TEMP'])/'mapleweb-release'
+          with zipfile.ZipFile(source) as z:
+              names=z.namelist()
+              for name in names:
+                  p=pathlib.PurePosixPath(name)
+                  if p.is_absolute() or '..' in p.parts or name.startswith('/'):
+                      raise SystemExit('Unsafe archive path')
+                  info=z.getinfo(name)
+                  if ((info.external_attr >> 16) & 0o170000) == 0o120000:
+                      raise SystemExit('Archive contains a symlink')
+              z.extractall(target)
+          lines=(target/'RELEASE_CHECKSUMS.txt').read_text().splitlines()
+          seen=set()
+          for line in lines:
+              value, path=line.split('  ',1)
+              f=target/path
+              if not f.is_file() or hashlib.sha256(f.read_bytes()).hexdigest()!=value:
+                  raise SystemExit('Checksum failure: '+path)
+              seen.add(path)
+          if seen != set(names)-{'RELEASE_CHECKSUMS.txt'}:
+              raise SystemExit('Release manifest does not cover all files')
+          print('Verified',len(seen),'release files')
+          PY
+      - name: Stage verified files without deleting other project files
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os, pathlib, shutil
+          source=pathlib.Path(os.environ['RUNNER_TEMP'])/'mapleweb-release'
+          for p in source.rglob('*'):
+              if p.is_file():
+                  rel=p.relative_to(source)
+                  dest=pathlib.Path('.')/rel
+                  dest.parent.mkdir(parents=True,exist_ok=True)
+                  shutil.copy2(p,dest)
+          PY
+      - name: Test all backend rules, schema, preflight and both Worker entrypoints
+        run: |
+          set -euo pipefail
+          node --check workers/developer.mjs
+          node --check workers/manager.mjs
+          node --check workers/mapleweb-agents.mjs
+          npm test
+          python3 tests/staging-binding-check.py
+      - name: Commit source to development only (never deploy)
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = 'refs/heads/mapleweb-ai-agents'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          python3 - <<'PY'
+          import os, pathlib, subprocess
+          source=pathlib.Path(os.environ['RUNNER_TEMP'])/'mapleweb-release'
+          paths=[str(p.relative_to(source)) for p in source.rglob('*') if p.is_file()]
+          subprocess.run(['git','add','--',*paths],check=True)
+          PY
+          if ! git diff --cached --quiet; then
+            git commit -m 'feat: import tested MapleWeb AI website and two Worker agents'
+            git push origin HEAD:mapleweb-ai-agents
+          fi
+      - name: Explain what was and was not done
+        run: |
+          echo '## MapleWeb development import complete' >> "$GITHUB_STEP_SUMMARY"
+          echo 'The verified source is now staged on the development branch.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'No Cloudflare deployment, production release, or customer website publication was triggered.' >> "$GITHUB_STEP_SUMMARY"
