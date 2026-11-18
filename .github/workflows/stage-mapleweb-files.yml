@@ -1,0 +1,44 @@
+name: Stage tested MapleWeb AI site and agents - development only
+on:
+  push:
+    branches: [mapleweb-ai-agents]
+    paths:
+      - .github/mapleweb-stage/complete.b64
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  stage:
+    if: github.ref == 'refs/heads/mapleweb-ai-agents'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mapleweb-ai-agents
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify and unpack the staged source
+        run: |
+          cat .github/mapleweb-stage/part-01.b64 .github/mapleweb-stage/part-02.b64 .github/mapleweb-stage/complete.b64 | base64 -d > /tmp/mapleweb-stage.tar.gz
+          echo '30071652a17e2b0005dc28bb478154ae8bf011aa9a1eed2442a358c8c5ff6632  /tmp/mapleweb-stage.tar.gz' | sha256sum -c -
+          tar -xzf /tmp/mapleweb-stage.tar.gz -C .
+      - name: Verify development website and agent code
+        run: |
+          test "$GITHUB_REF" = 'refs/heads/mapleweb-ai-agents'
+          test -s public/index.html
+          test -s public/build-with-ai.html
+          test -s mapleweb-agents/worker.mjs
+          python3 -c "from pathlib import Path; assert Path('public/index.html').read_text().startswith(chr(60)+'!doctype html>')"
+          node --check mapleweb-agents/worker.mjs
+          node --test mapleweb-agents/tests/agents.test.mjs
+      - name: Commit only to development branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/index.html public/build-with-ai.html mapleweb-agents
+          if ! git diff --cached --quiet; then
+            git commit -m 'feat: stage tested MapleWeb AI website and agents'
+            git push origin HEAD:mapleweb-ai-agents
+          fi
