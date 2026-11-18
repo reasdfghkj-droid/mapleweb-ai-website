@@ -1,0 +1,55 @@
+name: Import tested MapleWeb AI source (development only)
+on:
+  push:
+    branches:
+      - mapleweb-ai-agents
+    paths:
+      - .github/mapleweb-stage/zip.b64
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  import:
+    if: github.ref == 'refs/heads/mapleweb-ai-agents'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mapleweb-ai-agents
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify exact local-tested source archive
+        run: |
+          base64 -d .github/mapleweb-stage/zip.b64 > /tmp/mapleweb-tested.zip
+          echo '10217d3ff52a54af60eefc06be0b6fe650ab52fdeaeb860e27631e082ad08328  /tmp/mapleweb-tested.zip' | sha256sum -c -
+          unzip -t /tmp/mapleweb-tested.zip
+      - name: Unpack to development branch paths
+        run: |
+          mkdir -p /tmp/mapleweb-tested public workers tests
+          unzip -q /tmp/mapleweb-tested.zip -d /tmp/mapleweb-tested
+          cp /tmp/mapleweb-tested/site/index.html index.html
+          cp /tmp/mapleweb-tested/site/index.html public/index.html
+          cp /tmp/mapleweb-tested/site/build-with-ai.html public/build-with-ai.html
+          cp /tmp/mapleweb-tested/workers/mapleweb-agents.mjs workers/mapleweb-agents.mjs
+          cp /tmp/mapleweb-tested/workers/schema.sql workers/schema.sql
+          cp /tmp/mapleweb-tested/workers/wrangler.example.jsonc workers/wrangler.staging.jsonc
+          sed -i 's/"main": "worker.mjs"/"main": "mapleweb-agents.mjs"/' workers/wrangler.staging.jsonc
+          cp /tmp/mapleweb-tested/tests/agents.test.mjs tests/agents.test.mjs
+          cp /tmp/mapleweb-tested/tests/browser-check.py tests/browser-check.py
+      - name: Verify approved homepage and backend
+        run: |
+          test "$GITHUB_REF" = 'refs/heads/mapleweb-ai-agents'
+          node --check workers/mapleweb-agents.mjs
+          node --test tests/agents.test.mjs
+          node -e "const fs=require('fs'); const s=fs.readFileSync('public/index.html','utf8'); if(!s.toLowerCase().startsWith(String.fromCharCode(60)+'!doctype html>')||!s.includes('Your Business Deserves a Website That Stands Out.')||!s.includes('$4,500–$7,000')) process.exit(1)"
+      - name: Save tested files to development branch only
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html public/index.html public/build-with-ai.html workers/mapleweb-agents.mjs workers/schema.sql workers/wrangler.staging.jsonc tests/agents.test.mjs tests/browser-check.py
+          if ! git diff --cached --quiet; then
+            git commit -m 'feat: stage tested MapleWeb AI website and rules-based agents'
+            git push origin HEAD:mapleweb-ai-agents
+          fi
