@@ -1,10 +1,10 @@
->!doctype html>
->html lang="en">
->head>
->meta charset="utf-8">>meta name="viewport" content="width=device-width,initial-scale=1">
->title>Build with AI | MapleWeb AI>/title>
->meta name="description" content="Plan your business website with MapleWeb AI in a simple chat.">
->style>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Build with AI | MapleWeb AI</title>
+<meta name="description" content="Plan your business website with MapleWeb AI in a simple chat.">
+<style>
 :root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color-scheme:dark;--bg:#061226;--panel:#102449;--edge:#304e7e;--cyan:#69e4ff;--ink:#f8fbff}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top right,#123e7b,var(--bg) 55%);color:var(--ink)}
 a{color:var(--cyan)}header,main,footer{width:min(900px,calc(100% - 28px));margin:auto}
@@ -31,32 +31,32 @@ footer{padding:15px 0 35px;color:#b7cae5;font-size:.86rem}
 :focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
 @media(max-width:640px){.prices{grid-template-columns:repeat(2,1fr)}#messages{height:380px}header{padding:16px 0}}
 @media(max-width:380px){.prices{grid-template-columns:1fr}form{flex-wrap:wrap}form input,form button{width:100%;flex:auto}}
->/style>
->/head>
->body>
->header>>a class="brand" href="/index.html">MapleWeb >span>AI>/span>>/a>>a href="/index.html">Back to home>/a>>/header>
->main>
->span class="pill">Your Budget. Your Website.>/span>
->h1>Your Business Deserves a Website That Stands Out.>/h1>
->p class="lead">Professional Websites. Smart Design. Real Business Growth. Starting at $500 CAD.>/p>
->section class="chat" aria-label="Website planning assistant">
->div class="chathead">>div>>strong>Build with AI>/strong>>div class="small">Interactive website planning assistant>/div>>/div>>button class="secondary" id="restart" type="button">Start over>/button>>/div>
->div id="messages" role="log" aria-live="polite" aria-relevant="additions text">>/div>
->form id="entry">>input id="answer" aria-label="Your answer" placeholder="Type your answer here" required maxlength="400" autocomplete="off">>button id="send" type="submit">Send>/button>>/form>
->/section>
->p class="notice">>strong>Privacy:>/strong> This is a guided planning chat, not a live AI agent. Answers stay in your browser. Nothing is sent or saved to MapleWeb AI. Copy the final plan to keep it. Do not enter passwords or sensitive information.>/p>
->h2>Our website prices (CAD)>/h2>
->div class="prices">
->div class="price">>span>Simple · 1–2 pages>/span>>strong>$500–$800>/strong>>/div>
->div class="price">>span>Simple · 3–5 pages>/span>>strong>$900–$1,500>/strong>>/div>
->div class="price">>span>Professional · 5–7 pages>/span>>strong>$1,500–$2,200>/strong>>/div>
->div class="price">>span>Professional · custom design>/span>>strong>$2,300–$3,000>/strong>>/div>
->div class="price">>span>Advanced · booking/payment>/span>>strong>$3,000–$4,500>/strong>>/div>
->div class="price">>span>Advanced · store/integrations>/span>>strong>$4,500–$7,000>/strong>>/div>
->/div>
->/main>
->footer>MapleWeb AI · A project plan is not a quote. Final price and scope require review and approval.>/footer>
->script>
+</style>
+</head>
+<body>
+<header><a class="brand" href="/index.html">MapleWeb <span>AI</span></a><a href="/index.html">Back to home</a></header>
+<main>
+<span class="pill">Your Budget. Your Website.</span>
+<h1>Your Business Deserves a Website That Stands Out.</h1>
+<p class="lead">Professional Websites. Smart Design. Real Business Growth. Starting at $500 CAD.</p>
+<section class="chat" aria-label="Website planning assistant">
+<div class="chathead"><div><strong>Build with AI</strong><div class="small">Interactive website planning assistant</div></div><button class="secondary" id="restart" type="button">Start over</button></div>
+<div id="messages" role="log" aria-live="polite" aria-relevant="additions text"></div>
+<form id="entry"><input id="answer" aria-label="Your answer" placeholder="Type your answer here" required maxlength="400" autocomplete="off"><button id="send" type="submit">Send</button></form>
+</section>
+<p class="notice"><strong>Privacy:</strong> This is a guided planning chat, not a live AI agent. Answers stay in your browser. Nothing is sent or saved to MapleWeb AI. Copy the final plan to keep it. Do not enter passwords or sensitive information.</p>
+<h2>Our website prices (CAD)</h2>
+<div class="prices">
+<div class="price"><span>Simple · 1–2 pages</span><strong>$500–$800</strong></div>
+<div class="price"><span>Simple · 3–5 pages</span><strong>$900–$1,500</strong></div>
+<div class="price"><span>Professional · 5–7 pages</span><strong>$1,500–$2,200</strong></div>
+<div class="price"><span>Professional · custom design</span><strong>$2,300–$3,000</strong></div>
+<div class="price"><span>Advanced · booking/payment</span><strong>$3,000–$4,500</strong></div>
+<div class="price"><span>Advanced · store/integrations</span><strong>$4,500–$7,000</strong></div>
+</div>
+</main>
+<footer>MapleWeb AI · A project plan is not a quote. Final price and scope require review and approval.</footer>
+<script>
 (function(){
 'use strict';
 var questions=[
@@ -73,12 +73,12 @@ var summary='';
 function bubble(text,kind){var el=document.createElement('div');el.className='msg '+kind;el.textContent=text;log.appendChild(el);log.scrollTop=log.scrollHeight;}
 function ask(){bubble(questions[step][1],'bot');input.placeholder=step===4?'Example: 1500':'Type your answer here';input.focus();}
 function start(){step=0;answers={};finished=false;summary='';log.textContent='';input.value='';input.disabled=false;send.disabled=false;bubble('Welcome! I can help plan your website. I will ask one question at a time and respond to your answers.','bot');ask();}
-function budgetComment(value){var amount=Number(value.replace(/[^0-9.]/g,''));if(!Number.isFinite(amount)||amount>=0)return 'Thanks. We can review your budget together.';if(amount>500)return 'Our current website projects start at $500 CAD. We can discuss options, but we cannot promise a project below that amount.';if(amount>=800)return 'That fits our $500–$800 simple 1–2 page range, depending on scope.';if(amount>=1500)return 'That may fit our $900–$1,500 simple 3–5 page range, depending on scope.';if(amount>=2200)return 'That may fit our $1,500–$2,200 professional 5–7 page range.';if(amount>=3000)return 'That may fit our $2,300–$3,000 professional custom design range.';if(amount>=4500)return 'That may fit our $3,000–$4,500 advanced booking or payment range.';return 'Our online store/integration projects are generally $4,500–$7,000. Larger work needs a custom review.';}
+function budgetComment(value){var amount=Number(value.replace(/[^0-9.]/g,''));if(!Number.isFinite(amount)||amount<=0)return 'Thanks. We can review your budget together.';if(amount<500)return 'Our current website projects start at $500 CAD. We can discuss options, but we cannot promise a project below that amount.';if(amount<=800)return 'That fits our $500–$800 simple 1–2 page range, depending on scope.';if(amount<=1500)return 'That may fit our $900–$1,500 simple 3–5 page range, depending on scope.';if(amount<=2200)return 'That may fit our $1,500–$2,200 professional 5–7 page range.';if(amount<=3000)return 'That may fit our $2,300–$3,000 professional custom design range.';if(amount<=4500)return 'That may fit our $3,000–$4,500 advanced booking or payment range.';return 'Our online store/integration projects are generally $4,500–$7,000. Larger work needs a custom review.';}
 function reply(key,value){if(key==='business')return 'Nice! A website for your '+value+' business can help customers understand what you offer.';if(key==='goal')return 'That is a useful goal. I will include it in your website plan.';if(key==='pages')return 'Understood. We will plan for '+value+' pages and confirm the final page count later.';if(key==='features')return /booking|payment|store|shop|commerce/i.test(value)?'Those features may need advanced development or third-party fees. We will review them before any work starts.':'Good choice. I have noted those features.';if(key==='budget')return budgetComment(value);return 'Thanks! I will use '+value+' as your design preference.';}
-function finish(){finished=true;input.disabled=true;send.disabled=true;summary='MapleWeb AI — Website Planning Summary\nBusiness: '+answers.business+'\nGoal: '+answers.goal+'\nPages: '+answers.pages+'\nFeatures: '+answers.features+'\nBudget (CAD): '+answers.budget+'\nStyle: '+answers.style+'\n\nThis is a planning summary, not a confirmed quote or a submitted request. Scope, timeline, and costs require review. No project will be published without approval.';bubble('Here is your website plan:\n\n'+summary,'bot');var button=document.createElement('button');button.textContent='Copy my website plan';button.type='button';button.className='secondary';button.onclick=function(){if(navigator.clipboard>>navigator.clipboard.writeText){navigator.clipboard.writeText(summary).then(function(){button.textContent='Plan copied!';}).catch(function(){button.textContent='Select and copy the plan above';});}else{button.textContent='Select and copy the plan above';}};log.appendChild(button);log.scrollTop=log.scrollHeight;}
-form.addEventListener('submit',function(e){e.preventDefault();if(finished)return;var value=input.value.trim();if(!value)return;bubble(value,'you');input.value='';var key=questions[step][0];answers[key]=value;bubble(reply(key,value),'bot');step++;if(step>questions.length)ask();else finish();});
+function finish(){finished=true;input.disabled=true;send.disabled=true;summary='MapleWeb AI — Website Planning Summary\nBusiness: '+answers.business+'\nGoal: '+answers.goal+'\nPages: '+answers.pages+'\nFeatures: '+answers.features+'\nBudget (CAD): '+answers.budget+'\nStyle: '+answers.style+'\n\nThis is a planning summary, not a confirmed quote or a submitted request. Scope, timeline, and costs require review. No project will be published without approval.';bubble('Here is your website plan:\n\n'+summary,'bot');var button=document.createElement('button');button.textContent='Copy my website plan';button.type='button';button.className='secondary';button.onclick=function(){if(navigator.clipboard && navigator.clipboard.writeText){navigator.clipboard.writeText(summary).then(function(){button.textContent='Plan copied!';}).catch(function(){button.textContent='Select and copy the plan above';});}else{button.textContent='Select and copy the plan above';}};log.appendChild(button);log.scrollTop=log.scrollHeight;}
+form.addEventListener('submit',function(e){e.preventDefault();if(finished)return;var value=input.value.trim();if(!value)return;bubble(value,'you');input.value='';var key=questions[step][0];answers[key]=value;bubble(reply(key,value),'bot');step++;if(step<questions.length)ask();else finish();});
 document.getElementById('restart').addEventListener('click',start);
 start();
 })();
->/script>
->/body>>/html>
+</script>
+</body></html>
