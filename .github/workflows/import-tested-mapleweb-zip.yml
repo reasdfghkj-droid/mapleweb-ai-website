@@ -1,4 +1,4 @@
-name: Import tested MapleWeb website and agents (development only)
+name: Import tested MapleWeb package (development only)
 on:
   push:
     branches: [mapleweb-ai-agents]
@@ -7,7 +7,7 @@ on:
 permissions:
   contents: write
 jobs:
-  import-verified:
+  import-reviewed-package:
     if: github.ref == 'refs/heads/mapleweb-ai-agents'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -18,41 +18,24 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Validate and extract reviewed package
-        env:
-          PYTHON_SCRIPT: |
-            ZnJvbSB6aXBmaWxlIGltcG9ydCBaaXBGaWxlCmZyb20gcGF0aGxpYiBpbXBvcnQgUGF0aApwPVBhdGgo
-            J21hcGxld2ViLWFpLWNvbXBsZXRpb24tdGVzdGVkLnppcCcpCmFzc2VydCBwLmV4aXN0cygpLCAnVXBs
-            b2FkIG1hcGxld2ViLWFpLWNvbXBsZXRpb24tdGVzdGVkLnppcCB0byB0aGUgZGV2ZWxvcG1lbnQgYnJh
-            bmNoJwpleHBlY3RlZD17J1JFQURNRS5tZCcsJ3Rlc3RzL2FnZW50cy50ZXN0Lm1qcycsJ3Rlc3RzL2Jy
-            b3dzZXItY2hlY2sucHknLCdzaXRlL2J1aWxkLXdpdGgtYWkuaHRtbCcsJ3NpdGUvaW5kZXguaHRtbCcs
-            J3dvcmtlcnMvc2NoZW1hLnNxbCcsJ3dvcmtlcnMvd3JhbmdsZXIuZXhhbXBsZS5qc29uYycsJ3dvcmtl
-            cnMvbWFwbGV3ZWItYWdlbnRzLm1qcyd9CndpdGggWmlwRmlsZShwKSBhcyB6OgogICAgYXNzZXJ0IHNl
-            dCh6Lm5hbWVsaXN0KCkpPT1leHBlY3RlZCwgJ1VuZXhwZWN0ZWQgYXJjaGl2ZSBjb250ZW50cycKICAg
-            YXNzZXJ0IHN1bShpLmZpbGVfc2l6ZSBmb3IgaSBpbiB6LmluZm9saXN0KCkgaW4gcmFuZ2UoMCwxMDAw
-            MCksICdQYWNrYWdlIHRvbyBsYXJnZScKICAgIHByZWZpeD1ieXRlcyhbNjBdKStiJyFkb2N0eXBlIGh0
-            bWw+JwogICAgYXNzZXJ0IHoucmVhZCgnc2l0ZS9pbmRleC5odG1sJykubG93ZXIoKS5zdGFydHN3aXRo
-            KHByZWZpeCkKICAgIGFzc2VydCB6LnJlYWQoJ3NpdGUvYnVpbGQtd2l0aC1haS5odG1sJykubG93ZXIo
-            KS5zdGFydHN3aXRoKHByZWZpeCkKICAgIHBhdGhzPXsKICAgICAgICAnc2l0ZS9pbmRleC5odG1sJzon
-            cHVibGljL2luZGV4Lmh0bWwnLAogICAgICAgICdzaXRlL2J1aWxkLXdpdGgtYWkuaHRtbCc6J3B1Ymxp
-            Yy9idWlsZC13aXRoLWFpLmh0bWwnLAogICAgICAgICd3b3JrZXJzL21hcGxld2ViLWFnZW50cy5tanMn
-            OidtYXBsZXdlYi1hZ2VudHMvd29ya2VyLm1qcycsCiAgICAgICAgJ3dvcmtlcnMvc2NoZW1hLnNxbCc6
-            bWFwbGV3ZWItYWdlbnRzL3NjaGVtYS5zcWwnLAogICAgICAgICd3b3JrZXJzL3dyYW5nbGVyLmV4YW1w
-            bGUuanNvbmMnOidtYXBsZXdlYi1hZ2VudHMvd3JhbmdsZXIuZXhhbXBsZS5qc29uYycsCiAgICAgICAg
-            J3Rlc3RzL2FnZW50cy50ZXN0Lm1qcyc6J21hcGxld2ViLWFnZW50cy90ZXN0cy9hZ2VudHMudGVzdC5t
-           anMnLAogICAgICAgICdSRUFETUUubWQnOidtYXBsZXdlYi1hZ2VudHMvUkVBRE1FLm1kJywKICAgIH0K
-            ICBmb3Igc3JjLGRzdCBpbiBwYXRocy5pdGVtcygpOgogICAgICAgIGRlc3Q9UGF0aChkc3QpCiAgICAg
-            ICAgZGVzdC5wYXJlbnQubWtkaXIocGFyZW50cz1UcnVlLGV4aXN0X29rPVRydWUpCiAgICAgICAgZGVz
-            dC53cml0ZV9ieXRlcyh6LnJlYWQoc3JjKSkK
+      - name: Extract package for development
         run: |
-          printf '%s' "$PYTHON_SCRIPT" | base64 -d > /tmp/import-mapleweb.py
-          python3 /tmp/import-mapleweb.py
-      - name: Test agent security and customer chat
+          test -f mapleweb-ai-completion-tested.zip
+          unzip -q mapleweb-ai-completion-tested.zip -d /tmp/mapleweb-reviewed
+          mkdir -p public mapleweb-agents/tests
+          cp /tmp/mapleweb-reviewed/site/index.html public/index.html
+          cp /tmp/mapleweb-reviewed/site/build-with-ai.html public/build-with-ai.html
+          cp /tmp/mapleweb-reviewed/workers/mapleweb-agents.mjs mapleweb-agents/worker.mjs
+          cp /tmp/mapleweb-reviewed/workers/schema.sql mapleweb-agents/schema.sql
+          cp /tmp/mapleweb-reviewed/workers/wrangler.example.jsonc mapleweb-agents/wrangler.example.jsonc
+          cp /tmp/mapleweb-reviewed/tests/agents.test.mjs mapleweb-agents/tests/agents.test.mjs
+          cp /tmp/mapleweb-reviewed/README.md mapleweb-agents/README.md
+      - name: Test Worker and chat safety
         run: |
           node --check mapleweb-agents/worker.mjs
           node --test mapleweb-agents/tests/agents.test.mjs
           test "$GITHUB_REF" = 'refs/heads/mapleweb-ai-agents'
-      - name: Commit only to development branch
+      - name: Save verified development files
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
