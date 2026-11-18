@@ -1,11 +1,10 @@
 {
-  "name": "mapleweb-ai",
-  "version": "1.0.0",
+  "name": "mapleweb-ai-two-workers-release-candidate",
   "private": true,
+  "type": "module",
   "scripts": {
-    "deploy": "wrangler deploy --config wrangler.jsonc"
-  },
-  "devDependencies": {
-    "wrangler": "^4.162.0"
+    "test": "node --test tests/agents.test.mjs && node scripts/verify-source.mjs && node scripts/staging-preflight.mjs && python3 tests/schema-check.py",
+    "test:schema": "python3 tests/schema-check.py",
+    "test:browser": "python3 tests/browser-check.py && python3 tests/submission-browser-check.py"
   }
 }

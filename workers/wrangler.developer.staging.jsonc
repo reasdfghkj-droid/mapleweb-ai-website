@@ -1,0 +1,16 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "mapleweb-ai-developer-staging",
+  "main": "developer.mjs",
+  "compatibility_date": "2026-11-17",
+  "workers_dev": true,
+  "assets": {
+    "directory": "../public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/health", "/api/*"]
+  },
+  "vars": {
+    "SUBMISSIONS_APPROVED": "false",
+    "RETENTION_DAYS": "30"
+  }
+}
