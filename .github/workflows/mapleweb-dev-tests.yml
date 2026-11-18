@@ -1,0 +1,35 @@
+name: MapleWeb AI development tests (no deployment)
+on:
+  push:
+    branches: [mapleweb-ai-agents]
+    paths:
+      - "site/**"
+      - "public/**"
+      - "workers/**"
+      - "tests/**"
+      - "scripts/**"
+      - "package.json"
+      - ".github/workflows/mapleweb-dev-tests.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    if: github.ref == 'refs/heads/mapleweb-ai-agents'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify Worker syntax
+        run: node --check workers/mapleweb-agents.mjs
+      - name: Run backend safety tests
+        run: node --test tests/agents.test.mjs
+      - name: Check approved homepage, prices and safe staging config
+        run: node scripts/verify-source.mjs
+      - name: Verify database schema and rate counter
+        run: python3 tests/schema-check.py
+      - name: Refuse production and unapproved customer-intake settings
+        run: node scripts/staging-preflight.mjs
