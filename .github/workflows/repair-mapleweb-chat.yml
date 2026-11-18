@@ -1,0 +1,45 @@
+name: Repair MapleWeb chat on development branch only
+on:
+  push:
+    branches: [mapleweb-ai-agents]
+    paths: [.github/workflows/repair-mapleweb-chat.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  repair:
+    if: github.ref == 'refs/heads/mapleweb-ai-agents'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: mapleweb-ai-agents
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Repair HTML that was escaped by browser editor
+        run: |
+          node -e "
+          const fs=require('fs'), p='public/build-with-ai.html', lt=String.fromCharCode(60);
+          let s=fs.readFileSync(p,'utf8');
+          s=s.replace(/>(?=\\/?(?:!doctype|html|head|meta|title|style|body|header|main|section|div|p|span|a|form|input|button|small|strong|footer|script|h1|h2)\\b)/gi,lt);
+          s=s.replace('amount>=0','amount'+lt+'=0').replace('amount>500','amount'+lt+'500');
+          for(const n of [800,1500,2200,3000,4500])s=s.replace('amount>='+n,'amount'+lt+'='+n);
+          s=s.replace('step>questions.length','step'+lt+'questions.length');
+          s=s.replace('navigator.clipboard>>navigator.clipboard.writeText','navigator.clipboard '+String.fromCharCode(38,38)+' navigator.clipboard.writeText');
+          if(!s.startsWith(lt+'!doctype html>')||!s.includes(lt+'/html>'))process.exit(1);
+          fs.writeFileSync(p,s);
+          const script=s.split(lt+'script>')[1]?.split(lt+'/script>')[0];
+          if(!script)process.exit(1);
+          fs.writeFileSync('/tmp/mapleweb-chat.js',script);
+          "
+          node --check /tmp/mapleweb-chat.js
+      - name: Save repaired chat on development branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/build-with-ai.html
+          if ! git diff --cached --quiet; then
+            git commit -m 'fix: restore valid MapleWeb planning chat'
+            git push origin HEAD:mapleweb-ai-agents
+          fi
