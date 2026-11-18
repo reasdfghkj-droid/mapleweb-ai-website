@@ -1,0 +1,71 @@
+name: Deploy MapleWeb AI Developer and Manager (staging only)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mapleweb-staging
+  cancel-in-progress: false
+jobs:
+  staging:
+    if: github.ref == 'refs/heads/mapleweb-ai-agents'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: mapleweb-staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check staging account access and verified URLs
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          MAPLEWEB_DEVELOPER_STAGING_URL: ${{ vars.MAPLEWEB_DEVELOPER_STAGING_URL }}
+          MAPLEWEB_MANAGER_STAGING_URL: ${{ vars.MAPLEWEB_MANAGER_STAGING_URL }}
+        run: |
+          test "$GITHUB_REF" = 'refs/heads/mapleweb-ai-agents'
+          test -n "$CF_API_TOKEN"
+          test -n "$CF_ACCOUNT_ID"
+          case "$MAPLEWEB_DEVELOPER_STAGING_URL" in
+            https://mapleweb-ai-developer-staging.*.workers.dev) ;;
+            *) echo 'Missing verified Developer staging URL'; exit 1 ;;
+          esac
+          case "$MAPLEWEB_MANAGER_STAGING_URL" in
+            https://mapleweb-ai-manager-staging.*.workers.dev) ;;
+            *) echo 'Missing verified Manager staging URL'; exit 1 ;;
+          esac
+      - name: Run complete backend preflight
+        run: npm test && python3 tests/staging-binding-check.py
+      - name: Install Wrangler
+        run: npm install --no-save wrangler@4
+      - name: Resolve approved existing staging database for both Workers
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          npx wrangler d1 list --json > "$RUNNER_TEMP/mapleweb-d1-list.json"
+          node scripts/resolve-staging-d1.mjs workers/wrangler.developer.staging.jsonc < "$RUNNER_TEMP/mapleweb-d1-list.json"
+          node scripts/resolve-staging-d1.mjs workers/wrangler.manager.staging.jsonc < "$RUNNER_TEMP/mapleweb-d1-list.json"
+      - name: Apply reviewed schema to staging D1 only
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: npx wrangler d1 execute mapleweb-agent-staging --remote --file workers/schema.sql --yes
+      - name: Deploy Developer Worker (customer-facing preview, intake disabled)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: npx wrangler deploy --config workers/wrangler.developer.staging.jsonc
+      - name: Deploy Manager Worker (authenticated endpoints only)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: npx wrangler deploy --config workers/wrangler.manager.staging.jsonc
+      - name: Verify both live staging Workers
+        env:
+          MAPLEWEB_DEVELOPER_STAGING_URL: ${{ vars.MAPLEWEB_DEVELOPER_STAGING_URL }}
+          MAPLEWEB_MANAGER_STAGING_URL: ${{ vars.MAPLEWEB_MANAGER_STAGING_URL }}
+        run: |
+          node scripts/smoke-staging.mjs "$MAPLEWEB_DEVELOPER_STAGING_URL"
+          node scripts/smoke-manager-staging.mjs "$MAPLEWEB_MANAGER_STAGING_URL"
