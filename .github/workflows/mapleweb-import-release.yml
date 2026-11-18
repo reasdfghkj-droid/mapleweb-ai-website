@@ -5,6 +5,7 @@ on:
       - mapleweb-ai-agents
     paths:
       - releases/mapleweb-ai-two-workers-staging-release.zip
+      - .github/workflows/mapleweb-import-release.yml
   workflow_dispatch:
 permissions:
   contents: write
@@ -93,7 +94,7 @@ jobs:
           python3 - <<'PY'
           import os, pathlib, subprocess
           source=pathlib.Path(os.environ['RUNNER_TEMP'])/'mapleweb-release'
-          paths=[str(p.relative_to(source)) for p in source.rglob('*') if p.is_file()]
+          paths=[str(p.relative_to(source)) for p in source.rglob('*') if p.is_file() and p.relative_to(source).parts[:2] != ('.github', 'workflows')]
           subprocess.run(['git','add','--',*paths],check=True)
           PY
           if ! git diff --cached --quiet; then
