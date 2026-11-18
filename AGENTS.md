@@ -3,11 +3,11 @@
 This file guides development of the **Website Manager** and **Website Developer** for MapleWeb AI.
 
 ## Environment and status
-- Repository: `maplewebai/mapleweb-ai-website`
+- Canonical development repository: `reasdfghkj-droid/mapleweb-ai-website`
 - Development branch: `mapleweb-ai-agents`
-- Production website: GitHub Pages from `main` (leave it unchanged).
-- The Developer's M7 system has been built and tested locally, but **has not been deployed to Cloudflare**.
-- The Manager rules have local tests, but **no standalone Manager AI service is live**.
+- Production website runs from the protected `main` release path; leave it unchanged until reviewed and approved.
+- The verified Manager/Developer source has been imported into this development branch by the GitHub Actions Deployment Agent; it has **not been deployed to Cloudflare**.
+- 32 backend tests and the development GitHub Actions checks passed; **no standalone Manager or Developer Worker is live yet**.
 - The current Developer system builds sites from **fixed templates**; a generative AI model has not been connected.
 
 ## Responsibilities
@@ -32,10 +32,12 @@ This file guides development of the **Website Manager** and **Website Developer*
 6. Do not claim a Worker or AI agent is running until it has actually been deployed and tested end to end.
 7. Keep test deployments and sample projects separate from real customers.
 
-## Recommended layout for subsequent uploads
-- `agents/manager/` — manager policies and rules.
-- `agents/developer/` — developer instructions.
-- `mapleweb-agent/` — Worker source, database schema, tests and deployment guides.
-- `.github/workflows/` — build-and-test workflows only; never auto-deploy without approval.
+## Current layout and automation
+- `workers/developer.mjs` — Developer Worker entry point; `workers/manager.mjs` — Manager entry point.
+- `workers/mapleweb-agents.mjs` — shared rules and submission backend; `workers/schema.sql` — reviewed staging schema.
+- `public/`, `site/` — customer website; `tests/`, `scripts/` — automated checks.
+- `.github/workflows/mapleweb-import-release.yml` — verifies signed-off source release and imports it to development only.
+- `.github/workflows/mapleweb-dev-tests.yml` — development tests only.
+- `.github/workflows/mapleweb-staging-deploy.yml` — manually dispatched separate staging Worker deployment; never deploy automatically without approval.
 
-The complete M7 source package must be reviewed and uploaded separately. A ZIP uploaded directly to GitHub is stored as an archive, **not unpacked into source files**.
+The complete source release has already been extracted and committed on `mapleweb-ai-agents`; the archived ZIP is retained under `releases/` for reproducibility. Do not claim Cloudflare deployment or customer submission delivery until separately verified.
