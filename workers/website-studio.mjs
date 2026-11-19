@@ -8,7 +8,7 @@
  * Its output is always rendered through the same escaped, no-script template.
  */
 const MODEL = '@cf/meta/llama-3.1-8b-instruct';
-const keys = ['business','goal','pages','features','budget','style','timeline'];
+const keys = ['business','goal','pages','features','style','timeline'];
 
 function text(value, max=260) {
   return typeof value === 'string' ? value.trim().slice(0,max) : '';
