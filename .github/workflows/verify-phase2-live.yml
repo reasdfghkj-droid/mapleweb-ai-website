@@ -1,0 +1,54 @@
+name: Verify Phase 2 MapleWeb website live
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'workers/**'
+      - 'wrangler.jsonc'
+      - '.github/workflows/verify-phase2-live.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify live website and fail-closed automation gates
+        run: |
+          python3 - <<'PY'
+          import json,time,urllib.request,urllib.error
+          base='https://mapleweb-ai-website.reasdfghkj.workers.dev'
+          def fetch(path,post=False):
+              req=urllib.request.Request(base+path,data=b'{}' if post else None,
+                  headers={'User-Agent':'MapleWeb-Phase2-Release-Verification',
+                           'Content-Type':'application/json'} if post else
+                          {'User-Agent':'MapleWeb-Phase2-Release-Verification'})
+              try:
+                  with urllib.request.urlopen(req,timeout=20) as response:
+                      return response.status,response.read(100000).decode('utf-8','replace')
+              except urllib.error.HTTPError as e:
+                  return e.code,e.read(100000).decode('utf-8','replace')
+          ready=False
+          for attempt in range(18):
+              status,home=fetch('/')
+              whstatus,_=fetch('/api/stripe/webhook',post=True)
+              ready=(status==200 and whstatus==503 and
+                  'No upfront deposit' in home and 'MapleWeb' in home)
+              print('Live Worker check',attempt+1,'home',status,'signed-webhook-disabled',whstatus,'ready',ready,flush=True)
+              if ready:break
+              if attempt<17:time.sleep(8)
+          if not ready:raise SystemExit('Phase 2 Worker code NOT verified deployed; no live-publish claim.')
+          status,config=fetch('/api/config')
+          assert status==200
+          cfg=json.loads(config)
+          assert cfg.get('submissions_enabled') is False,'Customer intake must remain off until D1/Turnstile setup'
+          assert cfg.get('publishing_enabled') is False,'No customer site auto-publishing'
+          assert cfg.get('ai_model_connected') is False,'Public AI must not claim active model'
+          status,price=fetch('/api/prices')
+          assert status==200 and len(json.loads(price)['prices'])==6
+          status,sales=fetch('/sales.html')
+          assert status==200 and 'No upfront deposit' in sales
+          status,manage=fetch('/api/manager/projects')
+          assert status==404,'Public Developer Worker must not expose private Manager'
+          print('PASS new Phase 2 webhook route is deployed but disabled, sales site live, six prices, intake off, private manager inaccessible')
+          PY
