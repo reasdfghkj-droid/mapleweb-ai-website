@@ -4,6 +4,7 @@
   "main": "workers/manager.mjs",
   "compatibility_date": "2026-11-17",
   "workers_dev": false,
+  "ai": { "binding": "AI" },
   "assets": {
     "directory": "./manager-ui",
     "binding": "ASSETS",
