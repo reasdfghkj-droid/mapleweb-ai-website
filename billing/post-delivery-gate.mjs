@@ -8,13 +8,13 @@
  * save approval records, enforce authorization and idempotency before using this result.
  */
 const MAX_APPROVED_CAD_CENTS = 10_000_000; // Safeguard only; not a quote or published price.
-const ISO_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/;
+const ISO_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function validUtc(value) {
   return typeof value === 'string' && ISO_UTC.test(value) &&
     Number.isFinite(Date.parse(value)) &&
-    new Date(value).toISOString() === new Date(Date.parse(value)).toISOString() &&
+    new Date(value).toISOString() === value &&
     Date.parse(value) <= Date.now();
 }
 
