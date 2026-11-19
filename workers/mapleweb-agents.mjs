@@ -1,6 +1,7 @@
 /** MapleWeb AI development Worker — no publishing or paid model calls. */
 import { saveLeadAsProject } from './order-engine.mjs';
 import { processSandboxInvoiceWebhook } from './stripe-invoices.mjs';
+import { processDeveloperJob } from './developer-handoff.mjs';
 import { servePrivatePreview } from './private-previews.mjs';
 // Assets are served from the public directory through Cloudflare Workers Assets.
 const PRICES = Object.freeze([
@@ -207,7 +208,7 @@ async function verifyCaptcha(token, secret, remoteIp, expectedOrigin, fetcher) {
     data.hostname === new URL(expectedOrigin).hostname &&
     data.action === TURNSTILE_ACTION;
 }
-async function submit(req, env, fetcher) {
+async function submit(req, env, fetcher, ctx) {
   if (!submissionsEnabled(env)) return json({ error: 'Submissions are not configured or approved yet' }, 503);
   if (!secureOrigin(req, env)) return json({ error: 'Origin not permitted' }, 403);
   let data;
@@ -218,6 +219,9 @@ async function submit(req, env, fetcher) {
   const token = txt(data.turnstileToken, 3000);
   if (!name || !emailValid(email) || !token) return json({ error: 'Valid name, email, and security check required' }, 400);
   const answers = cleanAnswers(data.answers);
+  // Only the agreed website requirements are delivered to the builder.
+  // Do not upload entire unrelated conversation transcripts.
+  answers.additional_details = txt(data.answers?.additional_details, 900);
   if (!answers.business || !answers.goal || !answers.budget) return json({ error: 'Please complete business, goal, and budget' }, 400);
   if (sensitiveKeys(answers).length || looksLikePaymentCard(name) || looksLikeCredential(name) || looksLikePaymentCard(email) || looksLikeCredential(email))
     return json({ error: 'Remove passwords, payment card numbers and private keys before submitting.' }, 400);
@@ -230,15 +234,21 @@ async function submit(req, env, fetcher) {
   const projectId = crypto.randomUUID();
   try {
     const result = await saveLeadAsProject(env.DB, { submissionId: id, projectId, name, email, answers });
-    // Saved atomically in D1 with a private, fixed-template starter preview.
-    // No AI inference, payment, email, or website publication occurs on intake.
+    // The complete requirements and a durable builder job were saved atomically.
+    // Background template generation is allowed only after explicit owner approval.
+    if (env.AUTO_BUILD_HANDOFF_APPROVED === 'true' && typeof ctx?.waitUntil === 'function') {
+      ctx.waitUntil(processDeveloperJob(env.DB, projectId, env).catch(() => ({
+        ok:false, reason:'Build job remains in storage for owner review'
+      })));
+    }
+    // A queued job is NOT a completed or published customer website.
     return json(result, 201);
   } catch {
     return json({ error: 'Could not save request or create project. Please try again later.' }, 503);
   }
 }
 export default {
-  async fetch(req, env = {}) {
+  async fetch(req, env = {}, ctx) {
     const url = new URL(req.url);
     if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/index.html' || url.pathname === '/build-with-ai.html')) {
       if (env.ASSETS && typeof env.ASSETS.fetch === 'function') return env.ASSETS.fetch(req);
@@ -252,6 +262,7 @@ export default {
       return json({
         environment: 'staging',
         submissions_enabled: submissionsEnabled(env),
+        builder_handoff_enabled: submissionsEnabled(env) && env.AUTO_BUILD_HANDOFF_APPROVED === 'true',
         turnstile_site_key: publicKey,
         manager_enabled: Boolean(env.MANAGER_TOKEN),
         ai_model_connected: false,
@@ -267,7 +278,7 @@ export default {
     }
 
     if (req.method === 'POST' && url.pathname === '/api/chat') { try { return json(chat(await parseBody(req))); } catch (e) { return json({ error: e.message }, e.status || 400); } }
-    if (req.method === 'POST' && url.pathname === '/api/submit') return submit(req, env, fetch);
+    if (req.method === 'POST' && url.pathname === '/api/submit') return submit(req, env, fetch, ctx);
     if (req.method === 'POST' && url.pathname === '/api/stripe/webhook')
       return processSandboxInvoiceWebhook(req, env, fetch);
     if (url.pathname.startsWith('/api/manager/')) {
