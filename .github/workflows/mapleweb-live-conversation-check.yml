@@ -1,0 +1,57 @@
+name: Verify MapleWeb conversation studio on live Cloudflare website
+on:
+  push:
+    branches: [mapleweb-ai-agents]
+    paths: [.github/workflows/mapleweb-live-conversation-check.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Verify upgraded live homepage, conversational chat, six CAD prices and safe backend
+        run: |
+          python3 - <<'PY'
+          import json,urllib.request,urllib.error,time
+          base='https://mapleweb-ai-website.reasdfghkj.workers.dev'
+          def fetch(path,method='GET',payload=None):
+            body=None if payload is None else json.dumps(payload).encode('utf-8')
+            headers={'User-Agent':'MapleWeb-Conversation-Live-Check/1.0'}
+            if body is not None:headers['Content-Type']='application/json'
+            req=urllib.request.Request(base+path,method=method,headers=headers,data=body)
+            try:
+              with urllib.request.urlopen(req,timeout=20) as r:return r.status,r.read(800000).decode('utf-8','replace')
+            except urllib.error.HTTPError as e:return e.code,e.read(800000).decode('utf-8','replace')
+          required=['id="mw-gold-intro"','id="examples"','id="faq"','/chat-experience.js','/chat-experience.css','id="chat-form"','$4,500–$7,000']
+          for attempt in range(14):
+            status,home=fetch('/')
+            ok=status==200 and all(x in home for x in required)
+            print('Live homepage check',attempt+1,'HTTP',status,'new conversation references',ok)
+            if ok:break
+            if attempt==13:raise SystemExit('FAIL: upgraded homepage not publicly visible')
+            time.sleep(8)
+          status,js=fetch('/chat-experience.js')
+          assert status==200 and 'function detectQuestion' in js and 'Preview sample website' in js and 'No automatic submission' in js,'Live chat logic not served'
+          assert "fetch('/api/submit'" not in js,'Unexpected real customer submission logic'
+          print('PASS live ChatGPT-style guided conversation logic')
+          status,css=fetch('/chat-experience.css')
+          assert status==200 and '.mw-conversation' in css and '.mw-chat-composer' in css,'Live conversation styles missing'
+          print('PASS live mobile-responsive conversation styling')
+          status,planner=fetch('/build-with-ai.html')
+          assert status==200 and '/chat-experience.js' in planner and 'id="chat-form"' in planner,'Live planning page missing new chat'
+          print('PASS dedicated website planning page')
+          status,data=fetch('/api/config')
+          cfg=json.loads(data)
+          assert status==200 and cfg.get('submissions_enabled') is False and cfg.get('publishing_enabled') is False and cfg.get('ai_model_connected') is False
+          print('PASS automatic submissions and site publishing remain disabled; generative model not connected')
+          status,data=fetch('/api/prices')
+          ps=json.loads(data)
+          assert status==200 and ps.get('currency')=='CAD' and len(ps.get('prices',[]))==6
+          print('PASS approved six CAD prices API')
+          status,_=fetch('/api/manager/status')
+          assert status==404
+          print('PASS private Manager routes remain isolated')
+          print('SUCCESS: new conversational chat and classic homepage verified live on Cloudflare')
+          PY
