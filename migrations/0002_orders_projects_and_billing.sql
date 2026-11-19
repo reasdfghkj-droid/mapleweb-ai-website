@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS projects (
   delivery_confirmed_at TEXT,
   delivery_evidence_reference TEXT,
   quote_evidence_reference TEXT,
+  quote_acceptance_evidence_reference TEXT,
   customer_approval_evidence_reference TEXT,
   invoice_due_days INTEGER,
   invoice_due_terms_accepted INTEGER NOT NULL DEFAULT 0 CHECK(invoice_due_terms_accepted IN (0,1)),
