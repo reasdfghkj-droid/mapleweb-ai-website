@@ -61,6 +61,13 @@ async function load(id){
   try{
     const data=await api('/api/manager/projects/'+id);
     current=data.project;
+    const builder=data.developer_build||{};
+    $('builderStatus').textContent=builder.ok
+      ?'Developer job: '+builder.status+' · '+(builder.generator||'fixed-template')+
+       '. This is a private starter draft, NOT a completed customer website.'
+      :'No Developer build job was found for this project.';
+    $('processBuilder').disabled=builder.status!=='QUEUED';
+    $('downloadBuilder').disabled=builder.status!=='STARTER_READY';
     canDeleteAbandoned=data.abandoned_delete_eligibility?.allowed===true;
     $('deleteAbandoned').disabled=!canDeleteAbandoned;
     const details=$('details');details.replaceChildren();
@@ -204,6 +211,31 @@ $('deleteAbandoned').addEventListener('click',async()=>{
     cell('p','Related private drafts and in-app notices were removed. No customer email was sent.',details);
     await Promise.all([refresh(),loadInbox()]);
     notice('Deleted abandoned request after owner confirmation.');
+  }catch(e){notice(e.message,true);}
+});
+$('processBuilder').addEventListener('click',async()=>{
+  if(!current)return;
+  if(!window.confirm('Prepare a PRIVATE starter website using only the consented customer brief? This never publishes a site or charges the customer.'))return;
+  try{
+    const x=await api('/api/manager/projects/'+current.id+'/process-build',{
+      confirm:'PROCESS_PRIVATE_STARTER_ONLY',expectedRowVersion:current.row_version
+    });
+    if(!x.ok)throw Error(x.reason||'Developer queue is unavailable');
+    notice('Private Developer starter prepared for owner review. No publication or payment.');
+    await load(current.id);
+  }catch(e){notice(e.message,true);}
+});
+$('downloadBuilder').addEventListener('click',async()=>{
+  if(!current)return;
+  try{
+    const x=await api('/api/manager/projects/'+current.id+'/builder-output');
+    if(!x.ok||!x.bundle)throw Error(x.error||'Developer output not ready');
+    const blob=new Blob([JSON.stringify(x.bundle,null,2)],{type:'application/json;charset=utf-8'});
+    const url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download='mapleweb-developer-starter-'+current.id.slice(0,8)+'.json';
+    document.body.append(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    notice('Private Developer starter downloaded for review.');
   }catch(e){notice(e.message,true);}
 });
 $('approveInvoice').addEventListener('click',async()=>{
