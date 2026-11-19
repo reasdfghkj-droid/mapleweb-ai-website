@@ -4,6 +4,7 @@
  * Cloudflare Access and MANAGER_TOKEN have been configured and tested.
  */
 import { ownerAuthed, parseBody } from './mapleweb-agents.mjs';
+import { createSandboxInvoiceDraft } from './stripe-invoices.mjs';
 import {
   validId,commitOwnerTransition,createOwnerAIDraft,invoiceAssessment
 } from './order-engine.mjs';
@@ -39,7 +40,7 @@ export async function handleOwnerRequest(request,env={}) {
       ).all();
       return json({projects:results?.results||[]});
     }
-    const match=/^\/api\/manager\/projects\/([0-9a-f-]{36})(?:\/(transition|improve-draft|invoice-assessment|approve-invoice))?$/.exec(path);
+    const match=/^\/api\/manager\/projects\/([0-9a-f-]{36})(?:\/(transition|improve-draft|invoice-assessment|approve-invoice|draft-test-invoice))?$/.exec(path);
     if(!match||!validId(match[1]))return error('Not found',404);
     const id=match[1],operation=match[2]||'';
     const row=await rowOf(env.DB,id);
@@ -70,6 +71,14 @@ export async function handleOwnerRequest(request,env={}) {
       const answers=JSON.parse(row.answers_json);
       const result=await createOwnerAIDraft(env.DB,row,answers,env);
       return json(result,result.ok?200:409);
+    }
+    if(operation==='draft-test-invoice'){
+      const payload=await parseBody(request,1500);
+      if(payload?.confirm!=='CREATE_STRIPE_SANDBOX_DRAFT_ONLY'||
+         payload?.expectedRowVersion!==row.row_version)
+        return error('Explicit sandbox confirmation and current project version required',409);
+      const outcome=await createSandboxInvoiceDraft(env.DB,row,env,fetch);
+      return json(outcome,outcome.ok?200:409);
     }
     if(operation==='approve-invoice'){
       const payload=await parseBody(request,2500);
