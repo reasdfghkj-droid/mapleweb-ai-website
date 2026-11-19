@@ -1,0 +1,71 @@
+name: Validate chat-to-Developer handoff
+on:
+  push:
+    branches: [main, mapleweb-chat-to-developer-handoff-2026-11-19]
+    paths:
+      - 'public/**'
+      - 'workers/**'
+      - 'manager-ui/**'
+      - 'migrations/**'
+      - 'tests/**'
+      - 'wrangler.jsonc'
+      - 'wrangler.manager.jsonc'
+      - '.github/workflows/chat-developer-handoff-tests.yml'
+  pull_request:
+    paths:
+      - 'public/**'
+      - 'workers/**'
+      - 'manager-ui/**'
+      - 'migrations/**'
+      - 'tests/**'
+      - 'wrangler.jsonc'
+      - 'wrangler.manager.jsonc'
+      - '.github/workflows/chat-developer-handoff-tests.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test sales, delivery, privacy, secure preview and Developer handoff
+        run: |
+          node tests/sales-studio.test.mjs
+          node tests/post-delivery.test.mjs
+          node tests/automation-phase2.test.mjs
+          node tests/private-preview-inbox.test.mjs
+          node tests/chat-developer-handoff.test.mjs
+      - name: Validate all four D1 database migrations
+        run: |
+          python3 - <<'PY'
+          import sqlite3,pathlib,uuid
+          db=sqlite3.connect(':memory:')
+          db.execute('PRAGMA foreign_keys=ON')
+          for name in ['0001_secure_sales_submissions.sql','0002_orders_projects_and_billing.sql',
+                       '0003_private_previews_notifications.sql','0004_developer_handoff_queue.sql']:
+              db.executescript(pathlib.Path('migrations',name).read_text())
+              print('PASS',name)
+          names={t[0] for t in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+          assert {'submissions','projects','project_events','owner_notifications',
+                  'developer_build_jobs','invoice_operations'}.issubset(names)
+          sub=str(uuid.uuid4());proj=str(uuid.uuid4())
+          db.execute('INSERT INTO submissions(id,created_at,name,email,answers_json,status) VALUES (?,?,?,?,?,?)',
+              (sub,'2026-01-01T00:00:00.000Z','Test buyer','buyer@example.com','{}','NEW'))
+          db.execute('INSERT INTO projects(id,submission_id,created_at,updated_at,draft_html) VALUES (?,?,?,?,?)',
+              (proj,sub,'2026-01-01T00:00:00.000Z','2026-01-01T00:00:00.000Z','<html></html>'))
+          db.execute('INSERT INTO developer_build_jobs(project_id,created_at) VALUES (?,?)',
+              (proj,'2026-01-01T00:00:00.000Z'))
+          assert db.execute('SELECT status FROM developer_build_jobs').fetchone()[0]=='QUEUED'
+          db.execute("UPDATE developer_build_jobs SET status='STARTER_READY',output_json='{}' WHERE project_id=?",(proj,))
+          db.execute('DELETE FROM submissions WHERE id=?',(sub,))
+          assert db.execute('SELECT COUNT(*) FROM developer_build_jobs').fetchone()[0]==0
+          print('PASS atomic schema shape, build status, cascade privacy deletion')
+          PY
+      - name: Validate Cloudflare Worker bundles without deployment
+        run: |
+          npm install --no-audit --no-fund
+          npx wrangler deploy --dry-run --config wrangler.jsonc --outdir ./dist/customer
+          npx wrangler deploy --dry-run --config wrangler.manager.jsonc --outdir ./dist/manager
