@@ -6,8 +6,8 @@ This file guides development of the **Website Manager** and **Website Developer*
 - Canonical development repository: `reasdfghkj-droid/mapleweb-ai-website`
 - Development branch: `mapleweb-ai-agents`
 - Production website runs from the protected `main` release path; leave it unchanged until reviewed and approved.
-- The verified Manager/Developer source has been imported into this development branch by the GitHub Actions Deployment Agent; it has **not been deployed to Cloudflare**.
-- 32 backend tests and the development GitHub Actions checks passed; **no standalone Manager or Developer Worker is live yet**.
+- The complete Manager/Developer source is committed to this branch. The upgraded website and **Developer API are verified live** on `https://mapleweb-ai-website.reasdfghkj.workers.dev/`. Two separate staging Workers are not yet deployed.
+- 32 backend tests, development checks, Cloudflare bundling, and live Developer API smoke tests passed. **The Manager Worker is not independently deployed yet**; customer submissions remain disabled until D1 and Turnstile are fully configured.
 - The current Developer system builds sites from **fixed templates**; a generative AI model has not been connected.
 
 ## Responsibilities
