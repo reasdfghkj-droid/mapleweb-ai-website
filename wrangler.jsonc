@@ -9,12 +9,14 @@
     "binding": "ASSETS",
     "run_worker_first": [
       "/health",
-      "/api/*"
+      "/api/*",
+      "/preview/*"
     ],
     "not_found_handling": "404-page"
   },
   "vars": {
     "SUBMISSIONS_APPROVED": "false",
-    "RETENTION_DAYS": "30"
+    "RETENTION_DAYS": "30",
+    "PRIVATE_PREVIEWS_APPROVED": "false"
   }
 }
