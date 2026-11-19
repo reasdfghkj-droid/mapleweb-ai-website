@@ -1,0 +1,56 @@
+name: MapleWeb live website verification (read-only)
+on:
+  push:
+    branches: [mapleweb-ai-agents]
+    paths:
+      - .github/workflows/mapleweb-live-verify.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check-live-site:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check Cloudflare website and approved production homepage
+        run: |
+          python3 - <<'PY'
+          import html.parser, urllib.request, urllib.error, re
+          url='https://mapleweb-ai-website.reasdfghkj.workers.dev/'
+          print('Checking production URL:',url)
+          try:
+            with urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'MapleWeb-release-check/1.0'}),timeout=20) as resp:
+              print('HTTP status:',resp.status,'Final URL:',resp.url)
+              markup=resp.read(2_000_000).decode('utf-8','replace')
+          except Exception as e:
+            print('FAIL: URL unreachable:',str(e))
+            raise SystemExit(1)
+          class TextReader(html.parser.HTMLParser):
+            def __init__(self):super().__init__();self.fragments=[]
+            def handle_data(self,value):self.fragments.append(value)
+          parser=TextReader();parser.feed(markup)
+          text=' '.join(' '.join(parser.fragments).split())
+          expected=[
+            'Your Business Deserves a Website That Stands Out.',
+            'Professional Websites. Smart Design. Real Business Growth.',
+            '$500–$800','$900–$1,500','$1,500–$2,200',
+            '$2,300–$3,000','$3,000–$4,500','$4,500–$7,000',
+            'Build My Website with AI'
+          ]
+          ok=True
+          for value in expected:
+            found=value in text
+            print(('PASS' if found else 'FAIL')+': '+value)
+            ok &= found
+          try:
+            with urllib.request.urlopen(url+'build-with-ai.html',timeout=20) as r:
+              planner=r.read(250000).decode('utf8','replace')
+              print(('PASS' if r.status==200 and 'Preview a sample website' in planner else 'FAIL')+': planning chat')
+              ok &= r.status==200 and 'Preview a sample website' in planner
+          except Exception as e:
+            print('FAIL: planning chat:',str(e));ok=False
+          if not ok:
+            print('Live Cloudflare publication NOT verified; no claim of success')
+            raise SystemExit(1)
+          print('SUCCESS: live upgraded homepage and planning chat are visible')
+          PY
