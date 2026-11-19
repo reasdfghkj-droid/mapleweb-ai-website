@@ -1,0 +1,62 @@
+name: Verify live MapleWeb Developer API and safety (read-only)
+on:
+  push:
+    branches: [mapleweb-ai-agents]
+    paths:
+      - .github/workflows/mapleweb-live-api-verify.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  live-api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Probe website and safe Developer API with synthetic input
+        run: |
+          python3 - <<'PY'
+          import json, time, urllib.request, urllib.error
+          origin='https://mapleweb-ai-website.reasdfghkj.workers.dev'
+          def request(path, method='GET', data=None):
+            body=None if data is None else json.dumps(data).encode()
+            headers={'User-Agent':'MapleWeb-release-check/1.0'}
+            if body is not None:headers['Content-Type']='application/json'
+            req=urllib.request.Request(origin+path,data=body,headers=headers,method=method)
+            try:
+              with urllib.request.urlopen(req,timeout=18) as r:
+                return r.status,r.read(300_000).decode('utf-8','replace')
+            except urllib.error.HTTPError as e:
+              return e.code,e.read(300_000).decode('utf-8','replace')
+          print('Check production Developer at',origin)
+          for i in range(8):
+            status,raw=request('/health')
+            try: data=json.loads(raw)
+            except Exception:data={}
+            if status==200 and data.get('status')=='ok':
+              print('PASS /health',status,'on check',i+1)
+              break
+            print('WAIT /health status',status,'check',i+1)
+            if i==7:raise SystemExit('FAIL: Developer API not live')
+            time.sleep(12)
+          checks=[
+            ('/api/config','GET',None,lambda s,d:s==200 and d.get('submissions_enabled') is False and d.get('publishing_enabled') is False and d.get('ai_model_connected') is False),
+            ('/api/prices','GET',None,lambda s,d:s==200 and d.get('currency')=='CAD' and len(d.get('prices',[]))==6),
+            ('/api/chat','POST',{'answers':{'business':'Synthetic demo cafe'}},lambda s,d:s==200 and d.get('inquiry_submitted') is False and d.get('ai_model_connected') is False),
+            ('/api/draft','POST',{'answers':{'business':'Synthetic demo cafe','goal':'Show a sample website'}},lambda s,d:s==200 and d.get('published') is False and d.get('draft_only') is True),
+            ('/api/submit','POST',{'name':'Synthetic only'},lambda s,d:s==503),
+            ('/api/manager/status','GET',None,lambda s,d:s==404)
+          ]
+          all_ok=True
+          for path,method,payload,verify in checks:
+            status,raw=request(path,method,payload)
+            try: data=json.loads(raw)
+            except: data={}
+            ok=verify(status,data);all_ok &= ok
+            print(('PASS' if ok else 'FAIL'),method,path,'HTTP',status)
+          for path,marker in [('/','Your Business Deserves a Website'),('/build-with-ai.html','Preview a sample website')]:
+            status,body=request(path)
+            ok=status==200 and marker in body;all_ok &= ok
+            print(('PASS' if ok else 'FAIL'),'website',path,'HTTP',status)
+          if not all_ok:raise SystemExit('FAIL: Not all live Developer safety checks passed')
+          print('SUCCESS: Safe Developer API and current website are live; real customer submissions are disabled')
+          PY
