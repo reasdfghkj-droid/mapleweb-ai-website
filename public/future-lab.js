@@ -3,7 +3,7 @@
 (function(){
  'use strict';
  function init(){
-  const lab=document.getElementById('mw-design-lab');
+  const lab=document.getElementById('design-lab');
   if(!lab)return;
   const preview=lab.querySelector('#mw-lab-preview');
   const headline=lab.querySelector('#mw-lab-preview-title');
