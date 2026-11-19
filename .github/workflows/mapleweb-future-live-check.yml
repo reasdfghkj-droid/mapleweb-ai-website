@@ -1,0 +1,62 @@
+name: Verify futuristic MapleWeb website live on Cloudflare
+on:
+  push:
+    branches: [mapleweb-ai-agents]
+    paths: [.github/workflows/mapleweb-future-live-check.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  public:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Check public Vision Lab, assets, classic prices, and safe chat
+        run: |
+          python3 - <<'PY'
+          import json,time,urllib.request,urllib.error
+          base='https://mapleweb-ai-website.reasdfghkj.workers.dev'
+          def req(path,method='GET',body=None):
+            data=None if body is None else json.dumps(body).encode('utf-8')
+            headers={'User-Agent':'MapleWeb-Future-Live-Check/1.0'}
+            if data is not None:headers['Content-Type']='application/json'
+            request=urllib.request.Request(base+path,method=method,headers=headers,data=data)
+            try:
+              with urllib.request.urlopen(request,timeout=20) as response:
+                return response.status,response.read(800000).decode('utf-8','replace')
+            except urllib.error.HTTPError as e:
+              return e.code,e.read(800000).decode('utf-8','replace')
+          markers=['id="design-lab"','id="mw-lab-preview"','mw-future-hero','data-mw-business="studio"','id="mw-gold-intro"','id="faq"','/chat-experience.js','/future-lab.js','/future-lab.css','$4,500–$7,000']
+          for attempt in range(14):
+            status,html=req('/')
+            ready=status==200 and all(m in html for m in markers)
+            print('Live website check',attempt+1,'HTTP',status,'Future Vision Lab visible',ready)
+            if ready:break
+            if attempt==13:raise SystemExit('FAIL: Future Vision Lab not published')
+            time.sleep(8)
+          status,js=req('/future-lab.js')
+          assert status==200 and "getElementById('design-lab')" in js and "data" in js and 'aria-pressed' in js, 'Interactive Lab JavaScript unavailable'
+          assert 'fetch(' not in js and 'localStorage' not in js,'Vision Lab must not transmit or retain customer data'
+          print('PASS interactive Vision Lab JavaScript live, with no network calls')
+          status,css=req('/future-lab.css')
+          assert status==200 and '.mw-lab-shell' in css and 'prefers-reduced-motion' in css,'Live Lab CSS missing'
+          print('PASS futuristic styles and reduced-motion support live')
+          status,chat=req('/chat-experience.js')
+          assert status==200 and 'function detectQuestion' in chat,'Existing conversational chat not live'
+          print('PASS conversational New Chat remains available')
+          status,planner=req('/build-with-ai.html')
+          assert status==200 and '/chat-experience.js' in planner
+          print('PASS dedicated planning chat page')
+          status,prices=req('/api/prices')
+          prices=json.loads(prices)
+          assert status==200 and len(prices.get('prices',[]))==6 and prices.get('currency')=='CAD'
+          print('PASS all six CAD price tiers')
+          status,config=req('/api/config')
+          cfg=json.loads(config)
+          assert status==200 and cfg.get('submissions_enabled') is False and cfg.get('publishing_enabled') is False and cfg.get('ai_model_connected') is False
+          print('PASS customer submissions and automatic site publication disabled; real AI model not connected')
+          status,_=req('/api/manager/status')
+          assert status==404,'Private Manager route leaked'
+          print('PASS Manager API remains isolated')
+          print('SUCCESS: futuristic MapleWeb Vision Lab and existing safe website verified live')
+          PY
