@@ -158,6 +158,7 @@ async function open(options){
         feedback.textContent='Request saved! Reference: '+data.reference+
           '. Your complete website brief is in the Developer queue for private starter preparation and owner review. This is not a finished website or accepted order.';
         form.querySelectorAll('input,textarea,button').forEach(function(n){n.disabled=true;});
+        if(typeof options.onSuccess==='function')options.onSuccess(data);
         if(typeof options.addMessage==='function'){
           options.addMessage('assistant','Your website brief was securely saved for the Website Developer. Reference: '+
             data.reference+'. We will review your requirements before work begins. No payment is due.');
