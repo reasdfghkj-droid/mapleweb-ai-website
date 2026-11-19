@@ -21,6 +21,7 @@ jobs:
       - name: Validate JavaScript and existing backend safety tests
         run: |
           node --check public/chat-experience.js
+          node --check workers/developer.mjs
           npm test
       - name: Install browser
         run: |
