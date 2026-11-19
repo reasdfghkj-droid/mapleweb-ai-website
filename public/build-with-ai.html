@@ -45,6 +45,8 @@ button:hover{background:#d8ae6b}.secondary{background:transparent;color:#f9d8a3;
 </style>
 <link rel="stylesheet" href="/atelier.css">
 <link rel="stylesheet" href="/chat-experience.css">
+<link rel="stylesheet" href="/customer-handoff.css">
+<script defer src="/customer-handoff.js"></script>
 <script defer src="/chat-experience.js"></script>
 </head>
 <body class="mw-classic mw-planner-page">
@@ -59,7 +61,7 @@ button:hover{background:#d8ae6b}.secondary{background:transparent;color:#f9d8a3;
 <div id="log" role="log" aria-live="polite"></div>
 <form id="chat-form"><input id="answer" aria-label="Your answer" maxlength="300" required autocomplete="off" placeholder="Type your answer"><button id="send" type="submit">Send</button></form>
 </section>
-<p class="note"><strong>Privacy:</strong> This is a guided, rules-based website assistant, not a connected generative AI model. Your answers stay on this page during planning. If secure submissions are enabled later, you can choose to send your plan with consent. At the end, copy your plan to keep it. Do not type private or sensitive information.</p>
+<p class="note"><strong>Privacy:</strong> This is a guided, rules-based website assistant, not a connected generative AI model. Your answers stay on this page during planning. When secure Developer handoff is available, you can send all seven answers and extra instructions with your permission. At the end, copy your plan to keep it. Do not type private or sensitive information.</p>
 <h2>Approved website prices (CAD)</h2>
 <div class="prices">
 <div class="price"><span>Simple website · 1–2 pages</span><strong>$500–$800</strong></div>
@@ -70,7 +72,7 @@ button:hover{background:#d8ae6b}.secondary{background:transparent;color:#f9d8a3;
 <div class="price"><span>Advanced · store/integrations</span><strong>$4,500–$7,000</strong></div>
 </div>
 </main>
-<footer>MapleWeb AI · The chat creates a plan only, not a confirmed quote or submission. Customer approval is required before publishing.</footer>
+<footer>MapleWeb AI · The chat creates a plan, with optional secure handoff to the Website Developer after consent. A request is not a confirmed order. Customer approval is required before publishing.</footer>
 <!-- Conversation Studio is loaded from /chat-experience.js. No inline customer-data storage. -->
 </body>
 </html>

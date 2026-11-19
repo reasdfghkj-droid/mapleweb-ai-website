@@ -8,7 +8,9 @@ const txt=(v,max=200)=>typeof v==='string'?v.trim().slice(0,max):'';
 const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function clean(raw) {
  const r=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{};
- return Object.fromEntries(keys.map(k=>[k,txt(r[k])]));
+ const cleaned=Object.fromEntries(keys.map(k=>[k,txt(r[k])]));
+ cleaned.additional_details=txt(r.additional_details,900);
+ return cleaned;
 }
 function pagesFor(a) {
   const pageChoice=a.pages.toLowerCase();
@@ -67,7 +69,12 @@ export function buildWebsiteStarterBundle(raw) {
    requires_customer_approval:true,requires_owner_approval:true,
    advanced_integrations_connected:false,
    pages:files.length,
-   files:[...files.map(p=>makePage(p,files,a)),{path:'styles.css',content:style}],
+   files:[...files.map(p=>makePage(p,files,a)),{path:'styles.css',content:style},
+     {path:'MAPLEWEB_PRIVATE_BRIEF.txt',content:
+       'OWNER REVIEW COPY - DO NOT PUBLISH\n\n'+
+       keys.map(k=>k+': '+escape(a[k])).join('\n')+
+       '\nAdditional instructions: '+escape(a.additional_details||'None')+
+       '\n\nCustomer contact details are stored separately in the protected project record.'}],
    instructions:'These are sample pages, not a complete contracted customer site. Save HTML and CSS into one directory, replace placeholder text, implement requested features, test, and obtain customer and owner approval before publishing.'
  };
 }

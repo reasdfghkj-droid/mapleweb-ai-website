@@ -1,6 +1,7 @@
 import { buildStarterProject, improveDraftWithAI } from './website-studio.mjs';
 import { evaluatePostDeliveryInvoice } from '../billing/post-delivery-gate.mjs';
 import { notificationInsert } from './owner-inbox.mjs';
+import { developerJobInsert } from './developer-handoff.mjs';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const STATES = Object.freeze(['NEW','REVIEWING','QUOTED','ACCEPTED','BUILDING','PREVIEW_READY','DELIVERED','CANCELLED']);
@@ -61,14 +62,16 @@ export async function saveLeadAsProject(db, data) {
       .bind(projectId,submissionId,createdAt,createdAt,'NEW',1,draft.generator,draft.draft_html),
     db.prepare('INSERT INTO project_events (id,project_id,created_at,action,actor,details_json) VALUES (?,?,?,?,?,?)')
       .bind(crypto.randomUUID(),projectId,createdAt,'LEAD_RECEIVED','system','{"source":"consented-secure-intake"}'),
-    notificationInsert(db,projectId,'NEW_REQUEST',createdAt)
+    notificationInsert(db,projectId,'NEW_REQUEST',createdAt),
+    developerJobInsert(db,projectId,createdAt)
   ];
   const res=await db.batch(statements);
-  if (!Array.isArray(res) || res.length!==4 || res.some(x=>x?.success===false))
+  if (!Array.isArray(res) || res.length!==5 || res.some(x=>x?.success===false))
     throw new Error('Transaction did not commit');
   return {saved:true,reference:submissionId,project_reference:projectId,
     private_preview_ready:true,generated_by:draft.generator,delivered_to_agent:false,
     owner_inbox_recorded:true,notification_email_sent:false,
+    developer_brief_queued:true,build_started:false,full_website_finished:false,
     payment_due_now:false,published:false};
 }
 

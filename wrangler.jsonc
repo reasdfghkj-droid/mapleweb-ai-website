@@ -17,6 +17,7 @@
   "vars": {
     "SUBMISSIONS_APPROVED": "false",
     "RETENTION_DAYS": "30",
-    "PRIVATE_PREVIEWS_APPROVED": "false"
+    "PRIVATE_PREVIEWS_APPROVED": "false",
+    "AUTO_BUILD_HANDOFF_APPROVED": "false"
   }
 }

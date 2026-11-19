@@ -1,0 +1,17 @@
+/* MapleWeb AI: secure, optional Developer handoff panel in website planning chat. */
+.mw-handoff-panel{background:linear-gradient(155deg,#163d31,#0a251d);border:1px solid #c8a36c;border-radius:18px;padding:clamp(15px,3vw,24px);color:#fff1d7;margin:12px 6px 22px;box-shadow:0 12px 24px #0003;max-width:760px}
+.mw-handoff-heading{font:400 1.5rem/1.2 Georgia,serif;margin:0 0 9px;color:#f6d49c}
+.mw-handoff-small{color:#ead6b5;font-size:.9rem;margin:0 0 16px;line-height:1.55}
+.mw-handoff-status,.mw-handoff-feedback{font-size:.88rem;color:#f5d8aa;line-height:1.55}
+.mw-handoff-form{display:block!important;padding:0!important;margin:0!important;border:0!important;background:transparent!important}
+.mw-handoff-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.mw-handoff-field{display:flex;flex-direction:column;gap:7px;margin:13px 0;color:#f5e3c3;font-size:.9rem;font-weight:700}
+.mw-handoff-field input,.mw-handoff-field textarea{width:100%;box-sizing:border-box;min-height:44px;background:#061d17;color:#fff6e7;border:1px solid #a58b67;border-radius:10px;padding:11px 12px;resize:vertical;font:400 .96rem/1.4 system-ui,sans-serif}
+.mw-handoff-field textarea{min-height:105px}
+.mw-handoff-consent{display:flex;align-items:flex-start;gap:10px;color:#f1dcb8;font-size:.85rem;line-height:1.45;margin:15px 0}
+.mw-handoff-consent input{width:19px!important;height:19px!important;min-width:19px!important;flex:none;margin-top:2px;accent-color:#d2a66b}
+.mw-handoff-submit{background:linear-gradient(120deg,#f4d5a0,#ce9a58)!important;color:#102b21!important;border:1px solid #f9dfaa!important;border-radius:11px!important;padding:12px 18px!important;font-weight:800!important;cursor:pointer;min-height:45px}
+.mw-handoff-submit:disabled{opacity:.55;cursor:not-allowed}
+.mw-handoff-turnstile{margin-top:12px;max-width:100%;overflow:hidden}
+.mw-handoff-honeypot{position:absolute!important;left:-99999px!important;width:1px!important;height:1px!important;overflow:hidden!important}
+@media(max-width:570px){.mw-handoff-grid{grid-template-columns:1fr}.mw-handoff-panel{margin:8px 2px 20px;padding:17px}}
