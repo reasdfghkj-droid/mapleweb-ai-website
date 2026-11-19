@@ -112,7 +112,7 @@
   answers={};busy=false;previewed=false;
   oldLog.replaceChildren();field.value='';field.disabled=false;send.disabled=false;
   addMessage('assistant',"Hello! I'm MapleWeb AI's website planning assistant.\n\nTell me what you want to build, or ask me anything about our website services and prices.");
-  addOptions(['How much does a website cost?','Can you build a restaurant website?','Show me website examples'],true);
+  addOptions(['How much does a website cost?','When do I pay?','Show me website examples'],true);
   question();updateProgress();resizeField();
  }
  function textSafe(s){return String(s||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
@@ -147,6 +147,7 @@
   const v=s.trim().toLowerCase();
   const q=/\?|^(what|who|how|where|why|can you|could you|do you|does|is there|tell me|show me|explain|help me|i have a question|hi|hello|hey)\b/.test(v);
   if(!q)return null;
+  if(/(?:when\s+(?:do\s+)?(?:i|we)\s+pay|pay\s+after|upfront|deposit|pay\s+first|pay\s+before|payment\s+terms|pay\s+when\s+finished)/.test(v))return 'Our policy is pay after delivery — no deposit. You receive your completed, approved website first. After delivery is confirmed, we request the agreed final payment by invoice. We agree on scope, price, taxes and due date in writing before work starts. Live Stripe invoicing is not active yet.';
   if(/(?:price|pricing|cost|how much|package|charge|afford|cheap)/.test(v))return "Our website packages are:\n\n"+prices+"\n\nThese are starting ranges, not guaranteed quotes.";
   if(/(?:example|portfolio|sample|preview|demo)/.test(v))return 'You can explore the three illustrative website concepts on our homepage. After completing your plan here, select “Preview sample website” to see a private fixed-template draft. These are examples, not past customer projects.';
   if(/(?:book|booking|online shop|store|e.?commerce|payment feature|checkout)/.test(v))return 'Yes, we can plan a website with bookings, payments, or a shop. These advanced features may involve third-party services, extra costs, and additional review before a quote.';
@@ -162,7 +163,7 @@
  function summary(){
   return 'MapleWeb AI — Your Website Plan\n\n'+
    topics.map(function(t){return t.label+': '+(answers[t.key]||'Not decided');}).join('\n')+
-   '\n\nPlanning summary only. Not submitted, not a confirmed quote, and not published. Customer and owner approval required.';
+   '\n\nPayment policy: No upfront deposit; pay after the finished website has been delivered and handover confirmed. Final price, taxes and due date are agreed in writing first.\n\nPlanning summary only. Not submitted, not a confirmed quote, and not published. Customer and owner approval required.';
  }
  function previewHTML(){
   const business=textSafe(answers.business),goal=textSafe(answers.goal);
