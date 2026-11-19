@@ -1,5 +1,6 @@
 /** MapleWeb AI development Worker — no publishing or paid model calls. */
 import { saveLeadAsProject } from './order-engine.mjs';
+import { processSandboxInvoiceWebhook } from './stripe-invoices.mjs';
 // Assets are served from the public directory through Cloudflare Workers Assets.
 const PRICES = Object.freeze([
   { id: 'simple-1-2', label: 'Simple 1–2 pages', min: 500, max: 800 },
@@ -265,6 +266,8 @@ export default {
 
     if (req.method === 'POST' && url.pathname === '/api/chat') { try { return json(chat(await parseBody(req))); } catch (e) { return json({ error: e.message }, e.status || 400); } }
     if (req.method === 'POST' && url.pathname === '/api/submit') return submit(req, env, fetch);
+    if (req.method === 'POST' && url.pathname === '/api/stripe/webhook')
+      return processSandboxInvoiceWebhook(req, env, fetch);
     if (url.pathname.startsWith('/api/manager/')) {
       if (!ownerAuthed(req, env)) return json({ error: 'Unauthorized' }, 401);
       if (req.method === 'GET' && url.pathname === '/api/manager/status') {
