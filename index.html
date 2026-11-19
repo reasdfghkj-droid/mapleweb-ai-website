@@ -105,7 +105,8 @@ body.mw-gold-lock{overflow:hidden}
 
 </style>
 <link rel="stylesheet" href="/atelier.css">
-<script defer src="/planner-enhancements.js"></script>
+<link rel="stylesheet" href="/chat-experience.css">
+<script defer src="/chat-experience.js"></script>
 </head>
 <body class="mw-classic">
 <a class="mw-skip" href="#home">Skip to content</a>
@@ -122,96 +123,10 @@ body.mw-gold-lock{overflow:hidden}
 </div><p class="mw-example-note">Sample layouts are visual ideas only. Booking, online payments, and real customer websites require their own scope and approval.</p></div></section>
 <section class="tint" id="process"><div class="wrap"><span class="eyebrow">Simple process</span><h2>From your idea to an approved website.</h2><div class="steps"><div class="step"><strong>1. Tell us about your business</strong><p>Use our chat to create a website plan.</p></div><div class="step"><strong>2. Review your scope</strong><p>We confirm the quote, timeline, and included features.</p></div><div class="step"><strong>3. Preview privately</strong><p>Review the draft and request revisions.</p></div><div class="step"><strong>4. Approve the final version</strong><p>We verify customer and owner approvals before publishing.</p></div><div class="step"><strong>5. Pay as agreed</strong><p>Payment and ongoing charges are agreed in advance.</p></div><div class="step"><strong>6. Launch with approval</strong><p>Nothing goes live without your confirmation.</p></div></div></div></section>
 <section class="mw-questions" id="faq" aria-labelledby="mw-faq-heading"><div class="wrap"><span class="eyebrow">Quick answers</span><h2 id="mw-faq-heading">Questions before we build?</h2><div class="mw-faq"><details><summary>How much does a website cost?</summary><p>Our starting price is $500 CAD for a simple website. We publish six price ranges up to $7,000 CAD. Your final quote depends on the pages, design and features you approve.</p></details><details><summary>Can I see an example before deciding?</summary><p>Yes. Use the Build with AI planning chat to describe your business, then preview a sample design. The sample is generated from a fixed template; it is not a finished or published website.</p></details><details><summary>Does the chat automatically send my details?</summary><p>No. The planning chat helps you create and copy a website plan. Automatic customer submissions are not enabled yet, and nothing is sent without your consent when secure submissions become available.</p></details><details><summary>Will my website go live without my approval?</summary><p>No. We require customer and owner approval of the current design before publishing any customer website. Pricing, payments and timelines are reviewed before work starts.</p></details></div></div></section>
-<section id="planner"><div class="wrap"><span class="eyebrow">Build with AI</span><h2>Tell us your idea. We'll help you plan it.</h2><p class="intro">Our guided chat responds to each answer and asks the next question. It prepares a plan you can copy. Sample website drafts are generated from a fixed template. Generative AI and automatic submissions are not connected yet.</p><div class="chatbox"><div class="chathead"><div><strong>Start with AI</strong><small>Guided planning assistant</small></div><button class="secondary" id="restart" type="button">Start over</button></div><div id="log" role="log" aria-live="polite" aria-relevant="additions text"></div><form id="chat-form" class="chat-form"><input id="answer" aria-label="Your answer" maxlength="300" required autocomplete="off" placeholder="Type your answer"><button id="send" type="submit">Send</button></form></div><p class="note"><strong>Privacy:</strong> Answers stay in your browser during planning. A separate optional submission form appears only when secure delivery is enabled; nothing is sent without your consent. Do not enter passwords or sensitive details.</p></div></section>
+<section id="planner"><div class="wrap"><span class="eyebrow">Build with AI</span><h2>Tell us your idea. We'll help you plan it.</h2><p class="intro">Chat naturally about website design, features, and prices. Build a private website plan and preview an example design. This is a guided, rules-based assistant, not a connected generative AI model. Nothing is submitted automatically.</p><div class="chatbox"><div class="chathead"><div><strong>Start with AI</strong><small>Guided planning assistant</small></div><button class="secondary" id="restart" type="button">Start over</button></div><div id="log" role="log" aria-live="polite" aria-relevant="additions text"></div><form id="chat-form" class="chat-form"><input id="answer" aria-label="Your answer" maxlength="300" required autocomplete="off" placeholder="Type your answer"><button id="send" type="submit">Send</button></form></div><p class="note"><strong>Privacy:</strong> Answers stay in your browser during planning. A separate optional submission form appears only when secure delivery is enabled; nothing is sent without your consent. Do not enter passwords or sensitive details.</p></div></section>
 <section class="tint" id="contact"><div class="wrap"><span class="eyebrow">Contact</span><h2>Let's build something useful.</h2><div class="contact"><p>Contact details and automatic inquiry submissions will be enabled only after we verify secure delivery and publish an updated privacy notice.</p><p>No payment is collected through this page. A copied website plan is not an inquiry submission.</p></div></div></section>
 </main><a class="float-chat" href="#planner" aria-label="Start with AI website planning chat">Start with AI</a><footer><div class="wrap">© 2026 MapleWeb AI · Your Budget. Your Website. · Toronto, Canada</div></footer>
-<script>
-
-(function(){
-'use strict';
-const questions=[
- ['business','Hello! What kind of business do you have?'],
- ['goal','What would you like your website to help you achieve?'],
- ['pages','How many pages do you want? You can also say “not sure”.'],
- ['features','Which features matter to you? For example: contact form, gallery, booking, payment, or online store.'],
- ['budget','What is your approximate budget in Canadian dollars?'],
- ['style','What colours or design style do you like?'],
- ['timeline','When would you like your website ready?']
-];
-const log=document.getElementById('log');
-const field=document.getElementById('answer');
-const send=document.getElementById('send');
-let step=0,answers={};
-function show(value,who){const el=document.createElement('div');el.className='bubble '+who;el.textContent=value;log.appendChild(el);log.scrollTop=log.scrollHeight;}
-function ask(){show(questions[step][1],'bot');field.focus();}
-function start(){step=0;answers={};log.textContent='';field.value='';field.disabled=false;send.disabled=false;show('Welcome! I will respond to your answers and ask one question at a time.','bot');ask();}
-function budgetAnswer(raw){const n=Number(raw.replace(/[^0-9.]/g,''));if(!Number.isFinite(n)||n<=0)return 'Thanks. We can review your budget when we prepare a quote.';if(n<500)return 'Our minimum project price is $500 CAD. We cannot promise a website below that amount.';if(n<=800)return 'Our simple 1–2 page range is $500–$800.';if(n<900)return 'Your budget falls between our $500–$800 and $900–$1,500 ranges. We can review the right scope with you.';if(n<=1500)return 'Our simple 3–5 page range is $900–$1,500.';if(n<=2200)return 'Our professional 5–7 page range is $1,500–$2,200.';if(n<2300)return 'Your budget falls between our $1,500–$2,200 and $2,300–$3,000 ranges. We can review your options.';if(n<=3000)return 'Custom professional design typically ranges from $2,300–$3,000.';if(n<=4500)return 'Advanced booking or payment projects range from $3,000–$4,500.';if(n<=7000)return 'Online stores and integrations range from $4,500–$7,000.';return 'Projects over $7,000 need a separate custom quote; no price is guaranteed.';}
-function response(key,val){switch(key){case 'business':return 'Thanks! A website for your '+val+' business can help new customers discover your services.';case 'goal':return 'I understand. I will add that goal to your plan.';case 'pages':return 'Got it: '+val+' pages. We will confirm the final size before work begins.';case 'features':return /booking|payment|store|shop|commerce/i.test(val)?'Those advanced features may need third-party services or extra costs. Any costs need approval.':'Noted. We will review those features with you.';case 'budget':return budgetAnswer(val);default:return 'Great. I have noted your preference: '+val+'.';}}
-
-function esc(v){return String(v||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
-function makeDraft(a){const name=esc(a.business),goal=esc(a.goal),features=esc(a.features),style=esc(a.style);
-return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+
-'<meta http-equiv="Content-Security-Policy" content="default-src '+"'none'"+'; style-src '+"'unsafe-inline'"+'; base-uri '+"'none'"+'; form-action '+"'none'"+'">'+
-'<title>Draft for '+name+'</title><style>*{box-sizing:border-box}body{margin:0;font:16px/1.55 system-ui;background:#f4f8ff;color:#18304e}header,footer{padding:24px 7%;background:#09234a;color:white}main{max-width:900px;margin:auto;padding:55px 7%}h1{font-size:clamp(2.2rem,6vw,4rem);line-height:1.1}.tag{color:#176cae;font-weight:800;text-transform:uppercase;letter-spacing:.1em}section{background:#fff;padding:25px;border-radius:16px;margin:20px 0;box-shadow:0 4px 25px #1232}</style></head><body><header>'+name+' — sample concept</header><main><div class="tag">Website concept</div><h1>Welcome to '+name+'</h1><p>'+goal+'</p><section><h2>Services and features</h2><p>'+features+'</p></section><section><h2>Design style</h2><p>'+style+'</p></section><p>This is only a starting design. Pages, text, photos and pricing need approval.</p></main><footer>Private sample draft. Not a published website or a confirmed quote.</footer></body></html>';
-}
-
-function addInquiryAction(){
- const wrap=document.createElement('section');wrap.className='inquiry';wrap.style.cssText='border:1px solid #426da8;background:#0c2548;border-radius:12px;padding:16px;margin-top:12px';
- const heading=document.createElement('strong');heading.textContent='Send your website request (optional)';
- const status=document.createElement('p');status.setAttribute('role','status');status.textContent='Checking whether secure submissions are available…';
- wrap.appendChild(heading);wrap.appendChild(status);log.appendChild(wrap);
- // Offline demos and static hosting do not have this API, so we fail closed.
- fetch('/api/config',{method:'GET',credentials:'same-origin'})
-   .then(function(r){if(!r.ok)throw new Error('Not available');return r.json();})
-   .then(function(cfg){
-      if(cfg.submissions_enabled!==true || !cfg.turnstile_site_key || cfg.publishing_enabled!==false){status.textContent='Secure submissions are not available yet. Please copy your plan; it has not been sent.';return;}
-      status.textContent='Secure submissions are available. Nothing will be sent until you consent and press Send request.';
-      const form=document.createElement('form');form.className='inquiry-form';form.style.cssText='display:grid;gap:11px;padding:8px 0';
-      function field(label,type,max){const box=document.createElement('label');box.textContent=label;box.style.cssText='display:grid;gap:5px';const input=document.createElement('input');input.type=type;input.maxLength=max;input.required=true;input.style.cssText='padding:11px;border-radius:9px;background:#091b35;color:white;border:1px solid #799abf';box.appendChild(input);form.appendChild(box);return input;}
-      const name=field('Your name','text',100);const email=field('Email for follow-up','email',200);
-      const hp=document.createElement('input');hp.type='text';hp.name='website';hp.tabIndex=-1;hp.autocomplete='off';hp.setAttribute('aria-hidden','true');hp.style.cssText='position:absolute;left:-10000px;opacity:0';form.appendChild(hp);
-      const consentLabel=document.createElement('label');consentLabel.style.cssText='display:flex;gap:8px;align-items:flex-start';const consent=document.createElement('input');consent.type='checkbox';consent.required=true;consent.style.cssText='flex:0 0 18px;width:18px;height:18px;min-width:18px;margin-top:2px';
-      const consentText=document.createElement('span');consentText.textContent='I agree to send my name, email and website-plan answers for a business reply. No payment is requested.';consentLabel.appendChild(consent);consentLabel.appendChild(consentText);form.appendChild(consentLabel);
-      const turnstileHolder=document.createElement('div');turnstileHolder.style.minHeight='60px';form.appendChild(turnstileHolder);
-      const submitButton=document.createElement('button');submitButton.type='submit';submitButton.textContent='Send website request';submitButton.disabled=true;form.appendChild(submitButton);
-      let captchaToken='', captchaWidgetId=null;
-      const script=document.createElement('script');script.async=true;script.src='https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
-      script.onload=function(){if(!window.turnstile){status.textContent='Security check is unavailable. Your plan has not been sent.';return;}
-       captchaWidgetId=window.turnstile.render(turnstileHolder,{sitekey:cfg.turnstile_site_key,action:'mapleweb_submit',callback:function(token){captchaToken=token;submitButton.disabled=false;},'expired-callback':function(){captchaToken='';submitButton.disabled=true;},'error-callback':function(){captchaToken='';submitButton.disabled=true;}});
-      };
-      script.onerror=function(){status.textContent='Security check could not load. Your plan has not been sent.';};
-      form.addEventListener('submit',async function(ev){ev.preventDefault();if(!consent.checked||!captchaToken){status.textContent='Please complete consent and the security check first.';return;}
-        submitButton.disabled=true;status.textContent='Saving your request securely…';
-        try{const response=await fetch('/api/submit',{method:'POST',headers:{'content-type':'application/json'},credentials:'same-origin',body:JSON.stringify({name:name.value,email:email.value,consent:consent.checked,website:hp.value,turnstileToken:captchaToken,answers:answers})});const body=await response.json();
-          if(response.ok&&body.saved===true){status.textContent='Request saved with reference '+body.reference+'. It has not been automatically delivered to an agent. We will review submissions when the owner system is connected.';form.remove();}
-          else{status.textContent=body.error||'Unable to save request. Please try again later.';captchaToken='';if(captchaWidgetId!==null&&window.turnstile)window.turnstile.reset(captchaWidgetId);}
-        }catch(e){status.textContent='Unable to connect. Your request has not been confirmed or sent.';captchaToken='';if(captchaWidgetId!==null&&window.turnstile)window.turnstile.reset(captchaWidgetId);}
-      });
-      wrap.appendChild(form);document.head.appendChild(script);
-   }).catch(function(){status.textContent='Secure submissions are not connected yet. Copy your plan; it has not been sent.';});
-}
-
-function addDraftAction(){
- const preview=document.createElement('button');preview.type='button';preview.className='secondary';preview.textContent='Preview a sample website';
- preview.addEventListener('click',function(){
-   const html=makeDraft(answers);
-   const note=document.createElement('div');note.className='bubble bot';note.textContent='This is a sample design made from a fixed template, not a finished website. Nothing is uploaded or published.';
-   const frame=document.createElement('iframe');frame.setAttribute('title','Sample website draft preview');frame.setAttribute('sandbox','');frame.setAttribute('referrerpolicy','no-referrer');frame.style.cssText='width:100%;height:330px;border:1px solid #7193c1;border-radius:12px;background:white';frame.srcdoc=html;
-   const download=document.createElement('button');download.type='button';download.className='secondary';download.textContent='Save sample HTML';
-   download.addEventListener('click',function(){const blob=new Blob([html],{type:'text/html;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='mapleweb-sample-draft.html';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},1000);});
-   preview.disabled=true;log.appendChild(note);log.appendChild(frame);log.appendChild(download);log.scrollTop=log.scrollHeight;
- });
- log.appendChild(preview);
-}
-
-function finish(){const lines=['MapleWeb AI — Website Plan','Business: '+answers.business,'Goal: '+answers.goal,'Pages: '+answers.pages,'Features: '+answers.features,'Budget (CAD): '+answers.budget,'Style: '+answers.style,'Timeline: '+answers.timeline,'','Planning summary only. Not a submitted request or guaranteed quote. No site will be published before approval.'];const summary=lines.join('\n');show('Your plan is ready:\n\n'+summary,'bot');const copy=document.createElement('button');copy.type='button';copy.className='secondary';copy.textContent='Copy my website plan';copy.addEventListener('click',async function(){try{await navigator.clipboard.writeText(summary);copy.textContent='Copied!';}catch(e){copy.textContent='Please select and copy the summary above';}});log.appendChild(copy);addDraftAction();addInquiryAction();field.disabled=true;send.disabled=true;log.scrollTop=log.scrollHeight;}
-function containsPrivateInput(v){return /(?:password|passcode|api[_ -]?key|private[_ -]?key|access[_ -]?token)\s*(?::|=|is)\s*\S+/i.test(v)||/(?:\d[ -]?){13,19}/.test(v);}
-document.getElementById('chat-form').addEventListener('submit',function(e){e.preventDefault();const value=field.value.trim();if(!value)return;if(containsPrivateInput(value)){show('For your security, please do not share passwords, payment card numbers or private keys. Try again without private details.','bot');field.value='';return;}show(value,'user');field.value='';const key=questions[step][0];answers[key]=value;show(response(key,value),'bot');step++;if(step<questions.length)ask();else finish();});
-document.getElementById('restart').addEventListener('click',start);
-start();
-})();
-
-</script>
+<!-- Conversation Studio is loaded from /chat-experience.js. No inline customer-data storage. -->
 
 <script>
 /* Accessible golden welcome. Runs once per browser tab; Replay is always available. */
