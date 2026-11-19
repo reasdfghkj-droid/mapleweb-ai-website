@@ -84,7 +84,8 @@ assert.ok(recorded.some(x=>x.sql.includes('INSERT INTO owner_notifications')));
 const raceDb={
  prepare(sql){return {sql,bind(){return this},async first(){
    return {status:'QUEUED',attempts:0,project_status:'NEW',current_version:1,answers_json:JSON.stringify(answers)};
- },async run(){return {meta:{changes:0}}}}}
+ },async run(){return {meta:{changes:0}}}}},
+ async batch(){return []}
 };
 const race=await processDeveloperJob(raceDb,pid,{AUTO_BUILD_HANDOFF_APPROVED:'true'});
 assert.equal(race.ok,false);
