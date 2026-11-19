@@ -5,9 +5,9 @@ Built November 19, 2026. This describes the new **customer-consented handoff**; 
 ## Customer journey
 
 1. A customer opens "Start with AI" or "Build with AI" on the premium green-and-gold MapleWeb website.
-2. The guided planning chat asks seven questions: type of business, goal, page count, features, budget, design/style, and timeline. The chat also answers common questions.
+2. The guided planning chat asks six questions: type of business, goal, page count, features, design/style, and timeline. It automatically shows a preliminary price range based on the website requirements. The chat also answers common questions.
 3. At completion, "Send to Website Developer" opens a secure form **only when customer-submission and Developer-handoff configuration report ready**. The customer may add extra website instructions (up to 900 characters).
-4. The customer enters name and email, actively consents to share the seven answers and extra notes, and passes Cloudflare Turnstile.
+4. The customer enters name and email, actively consents to share the six answers and extra notes, and passes Cloudflare Turnstile.
 5. Only after pressing "Send my plan to Website Developer" does a POST to /api/submit occur. No raw unrelated conversation transcript, payment card, password, API key or private chat is deliberately uploaded.
 6. Cloudflare verifies HTTPS origin, consent, contact, Turnstile, rate limits and data bounds. A single D1 transaction inserts the submission, private project, project audit event, owner inbox alert, and **Developer build queue record**. If any required table is missing, the transaction fails; no false confirmation is returned.
 7. The response acknowledges a saved request and build job reference, not an accepted sales contract or a completed website.
