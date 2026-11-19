@@ -18,7 +18,7 @@
   const choices={
     2:['1–2 pages','3–5 pages','5–7 pages','Not sure yet'],
     3:['Contact form','Booking','Online store','Photo gallery','Not sure yet'],
-    4:['$500–$800','$900–$1,500','$1,500–$2,200','$2,300–$3,000','Not sure yet'],
+    4:['$500','$1,200','$2,000','$3,000','$4,500','Not sure yet'],
     5:['Classic and elegant','Modern and minimal','Luxury green and gold','Warm and welcoming'],
     6:['As soon as possible','Within a month','1–3 months','Flexible']
   };
