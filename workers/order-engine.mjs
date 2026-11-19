@@ -122,6 +122,7 @@ export function planOwnerTransition(row, requested, data={}, now=new Date().toIS
     fields.customer_approved_version=row.current_version;
     fields.owner_approved_version=row.current_version;
     fields.customer_approval_evidence_reference=customerApproval;
+    fields.customer_receipt_evidence_reference=receipt;
     fields.delivery_evidence_reference=evidence;
     fields.delivered_at=now;
     fields.delivery_confirmed_at=now;
