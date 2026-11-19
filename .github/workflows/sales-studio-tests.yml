@@ -1,0 +1,25 @@
+name: MapleWeb sales studio tests
+on:
+  push:
+    branches: [mapleweb-sales-system-2026-11-19]
+    paths:
+      - 'public/**'
+      - 'tests/sales-studio.test.mjs'
+      - '.github/workflows/sales-studio-tests.yml'
+  pull_request:
+    paths:
+      - 'public/**'
+      - 'tests/sales-studio.test.mjs'
+      - '.github/workflows/sales-studio-tests.yml'
+permissions:
+  contents: read
+jobs:
+  validate-sales:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate sales wizard and quote recommendation logic
+        run: node tests/sales-studio.test.mjs
