@@ -1,0 +1,54 @@
+name: Verify MapleWeb sales studio live
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'public/sales.html'
+      - 'public/index.html'
+      - '.github/workflows/verify-sales-live.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-sales-live:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm Sales Studio is actually published on Cloudflare
+        run: |
+          python3 - <<'PY'
+          import json,time,urllib.request,urllib.error
+          base='https://mapleweb-ai-website.reasdfghkj.workers.dev'
+          def get(path):
+            request=urllib.request.Request(base+path,headers={'User-Agent':'MapleWeb-Sales-Live-Verification/1.0'})
+            try:
+              with urllib.request.urlopen(request,timeout=20) as response:
+                return response.status,response.read(200000).decode('utf-8','replace')
+            except urllib.error.HTTPError as err:
+              return err.code,err.read(200000).decode('utf-8','replace')
+          good=False
+          for attempt in range(18):
+            status,html=get('/sales.html')
+            good=status==200 and all(marker in html for marker in (
+              'Website Sales Studio | MapleWeb AI',
+              'Question 1 of 7',
+              'id="leadPanel"',
+              'Secure request delivery is not active yet',
+              'consent:true',
+              'Not a binding quote'
+            ))
+            print('Sales Studio live check',attempt+1,'HTTP',status,'ready',good,flush=True)
+            if good:break
+            if attempt<17:time.sleep(8)
+          if not good:raise SystemExit('Sales Studio not verified live. No publication success claimed.')
+          status,home=get('/')
+          assert status==200 and 'href="/sales.html"' in home,'Live homepage does not link to Sales Studio'
+          status,config=get('/api/config')
+          assert status==200,'Sales backend config not available'
+          cfg=json.loads(config)
+          if cfg.get('submissions_enabled'):
+            print('WARNING secure intake is enabled; verify D1, Turnstile, owner privacy notice and notification operations')
+          else:
+            print('PASS secure request intake remains disabled until authorized and tested')
+          assert cfg.get('ai_model_connected') is False,'Unexpected AI model status'
+          print('SUCCESS Sales Studio page and homepage navigation verified on actual Cloudflare URL')
+          PY
