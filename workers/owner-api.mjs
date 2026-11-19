@@ -5,6 +5,7 @@
  */
 import { ownerAuthed, parseBody } from './mapleweb-agents.mjs';
 import { createSandboxInvoiceDraft } from './stripe-invoices.mjs';
+import { buildWebsiteStarterBundle } from './site-bundle.mjs';
 import {
   validId,commitOwnerTransition,createOwnerAIDraft,invoiceAssessment
 } from './order-engine.mjs';
@@ -40,7 +41,7 @@ export async function handleOwnerRequest(request,env={}) {
       ).all();
       return json({projects:results?.results||[]});
     }
-    const match=/^\/api\/manager\/projects\/([0-9a-f-]{36})(?:\/(transition|improve-draft|invoice-assessment|approve-invoice|draft-test-invoice))?$/.exec(path);
+    const match=/^\/api\/manager\/projects\/([0-9a-f-]{36})(?:\/(transition|improve-draft|invoice-assessment|approve-invoice|draft-test-invoice|bundle))?$/.exec(path);
     if(!match||!validId(match[1]))return error('Not found',404);
     const id=match[1],operation=match[2]||'';
     const row=await rowOf(env.DB,id);
@@ -51,6 +52,11 @@ export async function handleOwnerRequest(request,env={}) {
       try{parsed.answers=JSON.parse(row.answers_json);}catch{parsed.answers={};}
       delete parsed.answers_json;
       return json({project:parsed,invoice_eligibility:invoiceAssessment(row)});
+    }
+    if(request.method==='GET'&&operation==='bundle'){
+      let answers;
+      try{answers=JSON.parse(row.answers_json)}catch{return error('Stored requirements invalid',503);}
+      return json(buildWebsiteStarterBundle(answers));
     }
     if(request.method==='GET'&&operation==='invoice-assessment')
       return json({project_reference:id,assessment:invoiceAssessment(row)});
