@@ -1,0 +1,45 @@
+name: MapleWeb Developer Worker build check (no deployment)
+on:
+  push:
+    branches: [mapleweb-ai-agents]
+    paths:
+      - .github/workflows/mapleweb-developer-bundle-check.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test safe Developer and Manager routes with no Cloudflare secrets
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import developer from './workers/developer.mjs';
+          import manager from './workers/manager.mjs';
+          const origin='https://mapleweb-ai-website.reasdfghkj.workers.dev';
+          async function call(worker,path,method='GET',body=null){
+            const request=new Request(origin+path,{method,headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});
+            return worker.fetch(request,{},null);
+          }
+          let r=await call(developer,'/api/config');assert.equal(r.status,200);
+          let config=await r.json();assert.equal(config.submissions_enabled,false);assert.equal(config.publishing_enabled,false);
+          r=await call(developer,'/api/prices');assert.equal(r.status,200);
+          assert.equal((await r.json()).prices.length,6);
+          r=await call(developer,'/api/manager/status');assert.equal(r.status,404);
+          r=await call(developer,'/api/submit','POST',{consent:true});assert.equal(r.status,503);
+          r=await call(manager,'/api/manager/status');assert.equal(r.status,401);
+          r=await call(manager,'/api/submit','POST',{});assert.equal(r.status,404);
+          console.log('PASS: safe public Developer, protected Manager and disabled customer intake');
+          NODE
+      - name: Bundle Developer as Cloudflare Worker without deployment
+        run: |
+          npm install --no-save --no-audit --no-fund wrangler@4
+          npx wrangler deploy --dry-run --config workers/wrangler.developer.staging.jsonc --outdir "$RUNNER_TEMP/mapleweb-dev-dry-run"
+          test -d "$RUNNER_TEMP/mapleweb-dev-dry-run"
+          echo 'PASS Cloudflare Worker bundling; no deployment performed'
