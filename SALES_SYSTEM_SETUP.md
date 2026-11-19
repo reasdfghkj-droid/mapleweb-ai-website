@@ -1,6 +1,6 @@
 # MapleWeb AI — Automatic Sales System (Phase 1)
 
-**Status:** Code prepared in a development branch. **Not confirmed live.** No real orders, payments, booking, or automatic agent delivery are enabled.
+**Status:** Phase 1 published on Cloudflare and verified live on November 19, 2026. No real orders, payments, booking, or automatic agent delivery are enabled.
 
 ## What this release does
 - New premium green-and-gold Sales Studio at \`/sales.html\` linked from the homepage and the planning chat.
@@ -25,12 +25,12 @@
 - Existing Manager endpoints must remain private and require \`MANAGER_TOKEN\`. The public Developer Worker must never expose them.
 - **Do not enable intake** without a published privacy notice, tested deletion/retention procedures, and a confirmed person or process checking saved inquiries. Saved D1 records are **not** automatically delivered to the Website Developer Agent.
 
-## Cloudflare publication — required before calling this live
+## Cloudflare publication and future releases
 The public Cloudflare URL is \`https://mapleweb-ai-website.reasdfghkj.workers.dev/\`. This repo has a GitHub Action that can deploy when **GitHub Actions repository secrets** contain:
 - \`CLOUDFLARE_API_TOKEN\` — limited-permission Cloudflare Worker deploy token
 - \`CLOUDFLARE_ACCOUNT_ID\`
 
-The most recently checked publishing run stopped at the credential gate. Do not put these values in a chat, a source file, or a public variable. Set them directly in the repository's GitHub Actions Secrets UI. Then manually review the PR, merge to \`main\`, run the publishing workflow, and verify \`/sales.html\` on the **Cloudflare live URL** before saying it is published. A source commit alone is not publication.
+The GitHub publishing workflow is still blocked by missing deployment secrets, but the separate Cloudflare deployment mechanism did publish the Sales Studio after the merge. The [live verification run](https://github.com/reasdfghkj-droid/mapleweb-ai-website/actions/runs/44600679042) confirmed HTTP 200 for \`/sales.html\`, a homepage link, and disabled customer submissions. Do not put credentials in a chat, a source file, or a public variable. Set them directly in the GitHub Actions Secrets UI if this publishing workflow will be used for future releases. Always verify the actual Cloudflare URL after each change; a GitHub source commit alone is not publication.
 
 ## Optional lead intake activation (separate approval)
 1. Create a Cloudflare D1 database for customer requests. Apply \`migrations/0001_secure_sales_submissions.sql\` on that database **only when authorized**.
