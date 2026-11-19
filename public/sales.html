@@ -28,7 +28,7 @@ input[type="text"],input[type="email"],input[type="number"]{border:1px solid #9d
 .small{font-size:.85rem;color:var(--muted)}.aside h2,.results h2{font:400 1.6rem/1.2 Georgia,serif;margin:2px 0 13px}.aside ol{padding-left:21px;margin:14px 0}.aside li{margin:9px 0;color:#e8d8bb}.price{font-weight:900;color:var(--gold)}
 .results[hidden],#wizard[hidden],#leadPanel[hidden]{display:none!important}.pricehero{font:700 clamp(1.9rem,5vw,3.2rem)/1.13 system-ui;color:var(--gold);margin:6px 0 12px;letter-spacing:-.04em}
 .resultcard{background:#0b241d;border:1px solid #b99460;border-radius:15px;padding:20px;margin:18px 0}
-.budgetmsg{border-left:3px solid var(--gold);padding:8px 13px;background:#17372b;margin:17px 0;color:#f7e4c3}
+.estimatemsg{border-left:3px solid var(--gold);padding:8px 13px;background:#17372b;margin:17px 0;color:#f7e4c3}
 dl{display:grid;grid-template-columns:minmax(85px,130px) 1fr;gap:9px 14px}dt{font-weight:700;color:var(--gold)}dd{margin:0;overflow-wrap:anywhere}
 #message,#leadFeedback{min-height:1.5em;color:var(--warn);font-weight:700}.privacy{font-size:.83rem;color:var(--muted);border-top:1px solid #746149;padding-top:17px;margin-top:22px}
 .leadGrid{display:grid;grid-template-columns:1fr 1fr;gap:13px}.leadGrid label{display:block;font-weight:750;font-size:.86rem;margin-bottom:5px}
@@ -62,7 +62,7 @@ footer{border-top:1px solid #705d40;padding:23px 0;color:var(--muted);font-size:
 <h2 id="packageName"></h2>
 <p>Published starting price range</p>
 <div class="pricehero" id="packagePrice"></div>
-<p id="packageWhy"></p><p class="budgetmsg" id="budgetNote"></p>
+<p id="packageWhy"></p><p class="estimatemsg" id="estimateNote"></p>
 <div class="resultcard"><h2>Project overview</h2><dl id="review"></dl></div>
 <p class="small"><strong>Pay after delivery — no upfront deposit.</strong> Your final invoice is requested only once the approved website has been delivered and handover confirmed. This is a preliminary package recommendation, not a binding quote, order confirmation, or guaranteed delivery date. Taxes, platform fees, subscriptions, and extra services (if applicable) must be disclosed and approved in a written quote before work starts. No website or payment is processed automatically.</p>
 <div class="controls">
@@ -130,7 +130,7 @@ if(answers.pages==='3–5 pages')return packs[1];
 return packs[0];
 }
 function explainEstimate(p){
-return 'This estimate is based on your selected pages, features, and design—not on a customer budget. Final price, taxes and optional third-party costs require a written quote before work starts.';
+return 'This estimated price is based on your website's pages, features and design. Any taxes and optional third-party costs will be confirmed in your written quote before work starts.';
 }
 function secureText(s){return String(s||'').slice(0,300)}
 function forbidden(s){
@@ -192,7 +192,7 @@ quote=getPack();el('wizard').hidden=true;el('results').hidden=false;
 el('packageName').textContent=quote.label;
 el('packagePrice').textContent=money(quote.min)+'–'+money(quote.max)+' CAD';
 el('packageWhy').textContent='This is our estimated CAD price range based on the pages, features and design you selected. No budget information is needed.';
-el('budgetNote').textContent=explainEstimate(quote);
+el('estimateNote').textContent=explainEstimate(quote);
 var fields=[['Business',answers.business],['Goal',answers.goal],['Pages',answers.pages],['Features',answers.features],['Style',answers.style],['Timeline',answers.timeline]];
 var dl=el('review');dl.replaceChildren();
 fields.forEach(function(row){var dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=row[0];dd.textContent=row[1];dl.append(dt,dd)});
