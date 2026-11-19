@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import {hashPreviewToken,createPrivatePreviewShare,servePrivatePreview,revokePrivatePreviewShares} from '../workers/private-previews.mjs';
 import {notificationInsert,listOwnerNotifications,markNotificationRead} from '../workers/owner-inbox.mjs';
 import {planOwnerTransition} from '../workers/order-engine.mjs';
+import {abandonedDeletionEligibility,deleteAbandonedRequest} from '../workers/order-retention.mjs';
 import publicDeveloper from '../workers/developer.mjs';
 import {handleOwnerRequest} from '../workers/owner-api.mjs';
 
@@ -105,6 +106,36 @@ assert.equal(inbox.delivery,'IN_APP_ONLY');
 assert.equal((await markNotificationRead(inboxDb,uid)).marked_read,true);
 assert.equal((await markNotificationRead(inboxDb,'bad-id')).ok,false);
 
+// Abandoned-lead deletion must NEVER delete a priced, accepted or invoiced project.
+const abandoned={
+ id:uid,submission_id:'22222222-2222-4222-8222-222222222222',
+ row_version:1,status:'NEW',quote_accepted_at:null,stripe_invoice_id:null,
+ invoice_status:null,paid_at:null,delivered_at:null,approved_final_total_cad_cents:null
+};
+assert.equal(abandonedDeletionEligibility(abandoned).allowed,true);
+for(const update of [
+ {status:'DELIVERED'},
+ {status:'ACCEPTED'},
+ {status:'QUOTED'},
+ {stripe_invoice_id:'in_test1'},
+ {invoice_status:'paid'},
+ {quote_accepted_at:'2026-11-19T18:00:00.000Z'},
+ {approved_final_total_cad_cents:50000},
+ {paid_at:'2026-11-19T18:00:00.000Z'},
+ {delivered_at:'2026-11-19T18:00:00.000Z'}
+])assert.equal(abandonedDeletionEligibility({...abandoned,...update}).allowed,false,JSON.stringify(update));
+let sqlDeletion='';
+const deleteDb={prepare(sql){sqlDeletion=sql;return {bind(){return this},async run(){return {meta:{changes:1}}}}}};
+const deletion=await deleteAbandonedRequest(deleteDb,abandoned);
+assert.equal(deletion.ok,true);
+assert.equal(deletion.deleted,true);
+assert.equal(deletion.customer_notified,false);
+assert.ok(sqlDeletion.includes('DELETE FROM submissions'));
+assert.ok(sqlDeletion.includes('p.stripe_invoice_id IS NULL'));
+assert.ok(sqlDeletion.includes('p.quote_accepted_at IS NULL'));
+assert.ok(sqlDeletion.includes('p.row_version=?'));
+assert.equal((await deleteAbandonedRequest(deleteDb,{...abandoned,status:'DELIVERED'})).ok,false);
+
 // Double-check owner-only isolation and no public project previews by predictable IDs.
 const owner=await handleOwnerRequest(new Request('https://manager.example/api/manager/notifications'),{});
 assert.equal(owner.status,503);
@@ -135,4 +166,4 @@ const publicConfig=JSON.parse(fs.readFileSync('wrangler.jsonc','utf8'));
 assert.equal(managerConfig.vars.PRIVATE_PREVIEWS_APPROVED,'false');
 assert.equal(publicConfig.vars.PRIVATE_PREVIEWS_APPROVED,'false');
 assert.ok(publicConfig.assets.run_worker_first.includes('/preview/*'));
-console.log('PASS Phase 3: hashed expiring preview tokens, no scripts, denied stale/revoked/disabled links, private inbox, manager isolation');
+console.log('PASS Phase 3: hashed preview tokens, no scripts, denied stale links, private inbox, safe abandoned-lead deletion, manager isolation');
