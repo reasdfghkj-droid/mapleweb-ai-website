@@ -17,7 +17,6 @@ const QUESTIONS = Object.freeze([
   { key: 'goal', question: 'What would you like your website to help your business achieve?' },
   { key: 'pages', question: 'How many pages do you want?' },
   { key: 'features', question: 'Which features do you need, such as booking, contact form, or an online store?' },
-  { key: 'budget', question: 'What is your approximate budget in CAD, starting at $500?' },
   { key: 'style', question: 'Which colours or style do you prefer?' },
   { key: 'timeline', question: 'When would you like your website ready?' },
 ]);
@@ -26,6 +25,24 @@ function json(data, status = 200) { return new Response(JSON.stringify(data), { 
 function txt(x, max = 300) { return typeof x === 'string' ? x.trim().slice(0, max) : ''; }
 function cleanAnswers(a) { const obj = a && typeof a === 'object' && !Array.isArray(a) ? a : {}; return Object.fromEntries(QUESTIONS.map(q => [q.key, txt(obj[q.key])])); }
 
+function recommendPrice(a) {
+  const features=String(a.features||'').toLowerCase();
+  const goal=String(a.goal||'').toLowerCase();
+  const pages=String(a.pages||'').toLowerCase();
+  const style=String(a.style||'').toLowerCase();
+  let tier;
+  if(/online store|online shop|e.?commerce|shop|custom integrat/.test(features)||
+     /sell products|online store|e.?commerce/.test(goal))tier=PRICES[5];
+  else if(/book|payment|reservation/.test(features)||
+     /book|reservation/.test(goal))tier=PRICES[4];
+  else if(/custom premium|premium design|custom design/.test(style)||
+     /8\+|8 or more|more than 7/.test(pages))tier=PRICES[3];
+  else if(/5\s*[–-]\s*7/.test(pages))tier=PRICES[2];
+  else if(/3\s*[–-]\s*5/.test(pages))tier=PRICES[1];
+  else tier=PRICES[0];
+  return {id:tier.id,label:tier.label,min:tier.min,max:tier.max,currency:'CAD',
+    preliminary:true,quoted:false,charged:false};
+}
 function looksLikePaymentCard(value) {
   const runs = String(value).match(/(?:\d[ -]?){13,19}/g) || [];
   return runs.some(part => {
@@ -51,16 +68,6 @@ function replyFor(key, value) {
   if (key === 'goal') return 'That is a useful goal. I have included it in your plan.';
   if (key === 'pages') return `Understood. Your requested page count is: ${value}.`;
   if (key === 'features') return /booking|payment|store|shop|commerce/i.test(value) ? 'These advanced features may require a separate service and costs. We will review them before agreeing on a quote.' : 'Good. I have noted those features.';
-  if (key === 'budget') {
-    const n = Number(value.replace(/[^0-9.]/g, ''));
-    if (!Number.isFinite(n) || n <= 0) return 'Thanks. We can discuss your budget during the quote review.';
-    if (n < 500) return 'Our website projects start at $500 CAD.';
-    const tiers = PRICES;
-    const match = tiers.find(t => n >= t.min && n <= t.max);
-    if (match) return `${match.label} usually costs $${match.min.toLocaleString('en-CA')}–$${match.max.toLocaleString('en-CA')} CAD. Final cost depends on your approved scope.`;
-    if (n > 7000) return 'Budgets above $7,000 CAD need a custom quote; no price is guaranteed.';
-    return 'Your budget falls between our published price bands. We can recommend an appropriate scope when we review your plan.';
-  }
   return 'Thanks, I have included that preference in your website plan.';
 }
 function chat(data) {
@@ -76,12 +83,19 @@ function chat(data) {
   const completed = nextIndex === -1;
   const prior = completed ? QUESTIONS[QUESTIONS.length - 1] : QUESTIONS[nextIndex - 1];
   const acknowledgment = prior ? replyFor(prior.key, a[prior.key]) : '';
-  const nextQuestion = completed ? 'Your plan is ready. Copy it for your records. Nothing has been submitted or published.' : QUESTIONS[nextIndex].question;
+  const recommendation=a.pages&&a.features?recommendPrice(a):null;
+  const priceLine=recommendation?
+    'Based on your website details, '+recommendation.label+' is $'+
+    recommendation.min.toLocaleString('en-CA')+'–$'+recommendation.max.toLocaleString('en-CA')+
+    ' CAD (preliminary estimate; final price and taxes require written approval).':'';
+  const nextQuestion = completed ?
+    [priceLine,'Your plan is ready. You may send your brief for review with explicit consent if secure intake is enabled. Nothing is automatically submitted or published.'].filter(Boolean).join('\n\n') :
+    QUESTIONS[nextIndex].question;
   return {
     reply: [acknowledgment, nextQuestion].filter(Boolean).join('\n\n'),
     acknowledgment,
     next_key: completed ? null : QUESTIONS[nextIndex].key,
-    completed, answers: a, inquiry_submitted: false, ai_model_connected: false,
+    completed, answers: a, recommendation, inquiry_submitted: false, ai_model_connected: false,
   };
 }
 // A safe and clearly marked starter *preview*, not an actual deployed customer site.
@@ -222,7 +236,7 @@ async function submit(req, env, fetcher, ctx) {
   // Only the agreed website requirements are delivered to the builder.
   // Do not upload entire unrelated conversation transcripts.
   answers.additional_details = txt(data.answers?.additional_details, 900);
-  if (!answers.business || !answers.goal || !answers.budget) return json({ error: 'Please complete business, goal, and budget' }, 400);
+  if (!answers.business || !answers.goal || !answers.pages || !answers.features || !answers.style || !answers.timeline) return json({ error: 'Please complete the six website planning questions' }, 400);
   if (sensitiveKeys(answers).length || looksLikePaymentCard(name) || looksLikeCredential(name) || looksLikePaymentCard(email) || looksLikeCredential(email))
     return json({ error: 'Remove passwords, payment card numbers and private keys before submitting.' }, 400);
   const limited = await rateLimitSubmission(req, env);
@@ -329,4 +343,4 @@ export default {
     return json({ error: 'Not found' }, 404);
   }
 };
-export { PRICES, QUESTIONS, chat, draftPreview, publishGate, ownerAuthed, submit, parseBody, TURNSTILE_ACTION };
+export { PRICES, QUESTIONS, recommendPrice, chat, draftPreview, publishGate, ownerAuthed, submit, parseBody, TURNSTILE_ACTION };
