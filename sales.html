@@ -44,7 +44,7 @@ footer{border-top:1px solid #705d40;padding:23px 0;color:var(--muted);font-size:
 <section class="hero" aria-labelledby="heading">
 <div class="eyebrow">Your personal sales consultation · Free</div>
 <h1 id="heading">Find the right website <em>for your business.</em></h1>
-<p class="lead">Answer a few easy questions. Our guided sales assistant will recommend a package and show its published price range in Canadian dollars. No pressure and no payment required.</p>
+<p class="lead">Answer a few easy questions. Our guided sales assistant will recommend a package and show its published price range in Canadian dollars. No pressure and no payment required today. <strong>No upfront deposit: pay only after receiving your finished website.</strong></p>
 </section>
 <div class="layout">
 <div class="panel">
@@ -64,7 +64,7 @@ footer{border-top:1px solid #705d40;padding:23px 0;color:var(--muted);font-size:
 <div class="pricehero" id="packagePrice"></div>
 <p id="packageWhy"></p><p class="budgetmsg" id="budgetNote"></p>
 <div class="resultcard"><h2>Project overview</h2><dl id="review"></dl></div>
-<p class="small">This is a preliminary package recommendation, not a binding quote, order confirmation, or guaranteed delivery date. Taxes, platform fees, subscriptions, and extra services (if applicable) must be disclosed and approved in a written quote before work starts. No website or payment is processed automatically.</p>
+<p class="small"><strong>Pay after delivery — no upfront deposit.</strong> Your final invoice is requested only once the approved website has been delivered and handover confirmed. This is a preliminary package recommendation, not a binding quote, order confirmation, or guaranteed delivery date. Taxes, platform fees, subscriptions, and extra services (if applicable) must be disclosed and approved in a written quote before work starts. No website or payment is processed automatically.</p>
 <div class="controls">
 <button class="button secondary" type="button" id="edit">← Edit answers</button>
 <button class="button secondary" type="button" id="copy">Copy summary</button>
@@ -91,9 +91,9 @@ footer{border-top:1px solid #705d40;padding:23px 0;color:var(--muted);font-size:
 <aside class="aside">
 <div class="eyebrow">How our sales system works</div>
 <h2>Clear prices. No surprises.</h2>
-<ol><li>Tell us about your business</li><li>Choose pages and features</li><li>Share your budget and timing</li><li>See a suitable price range</li><li>Save your plan; request review when secure intake is ready</li></ol>
+<ol><li>Tell us about your business</li><li>Choose pages and features</li><li>Share your budget and timing</li><li>See a suitable price range</li><li>Save your plan; request review when secure intake is ready</li><li>Receive your approved website, then pay the final invoice</li></ol>
 <p>Our website packages start at <span class="price">$500 CAD</span>. The recommendation is created by transparent rules, not a connected generative AI model.</p>
-<p class="privacy">We do not take deposits or credit-card information here. Customer and owner approval are required before any customer website is published.</p>
+<p class="privacy"><strong>Pay after delivery.</strong> No deposit or credit-card information is requested here. We first deliver the approved finished website; then request payment using the agreed invoice. Customer and owner approval are required before any customer website is published.</p>
 </aside>
 </div>
 </main>
@@ -195,7 +195,7 @@ return ['MapleWeb AI — Preliminary website estimate','',
 'Timeline: '+secureText(answers.timeline),
 '',
 explainBudget(p),'',
-'Preliminary recommendation only. Not a binding quote or accepted order. Taxes, third-party charges, subscriptions and final scope are subject to written review. No payment or publication has been authorized.'].join('\n');
+'Payment policy: No upfront deposit. The agreed invoice is requested after the approved finished website is delivered and handover confirmed. The total, applicable taxes and invoice due date will be agreed in writing before work starts. Preliminary recommendation only. Not a binding quote or accepted order. No payment or publication has been authorized.'].join('\n');
 }
 function showResult(){
 quote=getPack();el('wizard').hidden=true;el('results').hidden=false;
