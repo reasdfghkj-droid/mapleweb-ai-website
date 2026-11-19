@@ -1,0 +1,80 @@
+name: MapleWeb golden welcome UI verification
+on:
+  push:
+    branches: [mapleweb-ai-agents]
+    paths:
+      - .github/workflows/mapleweb-golden-ui-tests.yml
+      - public/index.html
+      - public/build-with-ai.html
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  golden-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check embedded JavaScript syntax without executing it
+        run: |
+          node --input-type=module <<'JS'
+          import { readFileSync, writeFileSync } from 'node:fs';
+          import { execFileSync } from 'node:child_process';
+          for (const page of ['public/index.html','public/build-with-ai.html']) {
+            const html=readFileSync(page,'utf8');
+            const matches=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)];
+            let count=0;
+            for (const m of matches) {
+              if (!m[1].trim())continue;
+              const tmp='/tmp/maple-inline-'+count+'.js';
+              writeFileSync(tmp,m[1]);
+              execFileSync(process.execPath,['--check',tmp],{stdio:'inherit'});
+              count++;
+            }
+            console.log('PASS',page,count,'inline scripts valid');
+          }
+          const home=readFileSync('public/index.html','utf8');
+          if(!home.includes('mw-gold-intro')||!home.includes('mw-intro-skip')||!home.includes('Replay the golden welcome'))throw Error('Golden introduction missing');
+          if(!home.includes('$4,500–$7,000')||!home.includes('id="chat-form"'))throw Error('Website pricing or chat was removed');
+          JS
+      - name: Install Playwright Chromium for real mobile browser check
+        run: |
+          npm install --no-save --no-audit --no-fund playwright
+          npx playwright install --with-deps chromium
+      - name: Start local static preview
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 --directory public >/tmp/maple-gold-http.log 2>&1 &
+          sleep 2
+      - name: Validate animated opening, skip, replay, pricing and mobile chat
+        run: |
+          node --input-type=module <<'JS'
+          import { chromium } from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:375,height:700},reducedMotion:'no-preference'});
+          const errors=[];
+          page.on('pageerror',e=>errors.push(e.message));
+          await page.goto('http://127.0.0.1:8765/',{waitUntil:'domcontentloaded'});
+          await page.locator('#mw-gold-intro').waitFor({state:'visible',timeout:6000});
+          if(!(await page.locator('#mw-intro-skip').isVisible()))throw Error('Skip intro is not visible');
+          await page.locator('#mw-intro-skip').click();
+          await page.locator('#mw-gold-intro').waitFor({state:'hidden',timeout:4000});
+          if(!(await page.getByText('Your Business Deserves a Website',{exact:false}).first().isVisible()))throw Error('Hero not visible after skip');
+          if((await page.locator('.price').count())!==6)throw Error('Six approved price cards missing');
+          await page.getByRole('button',{name:'Replay the golden welcome'}).click();
+          await page.locator('#mw-gold-intro').waitFor({state:'visible'});
+          await page.locator('#mw-intro-skip').click();
+          await page.locator('#mw-gold-intro').waitFor({state:'hidden'});
+          await page.screenshot({path:'/tmp/golden-mobile-home.png',fullPage:true});
+          const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth+2);
+          if(overflow)throw Error('Horizontal overflow on mobile homepage');
+          await page.goto('http://127.0.0.1:8765/build-with-ai.html',{waitUntil:'domcontentloaded'});
+          if(!(await page.locator('#chat-form').isVisible()))throw Error('Planner input missing');
+          if((await page.locator('.price').count())!==6)throw Error('Planner pricing missing');
+          await page.screenshot({path:'/tmp/golden-mobile-chat.png',fullPage:true});
+          if(errors.length)throw Error('Browser JavaScript errors: '+errors.join('; '));
+          console.log('PASS golden welcome, skip/replay, approved prices, mobile homepage and chat');
+          await browser.close();
+          JS
