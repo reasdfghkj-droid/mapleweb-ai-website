@@ -9,6 +9,7 @@ import { buildWebsiteStarterBundle } from './site-bundle.mjs';
 import { createPrivatePreviewShare,revokePrivatePreviewShares } from './private-previews.mjs';
 import { listOwnerNotifications,markNotificationRead } from './owner-inbox.mjs';
 import { abandonedDeletionEligibility,deleteAbandonedRequest } from './order-retention.mjs';
+import { getDeveloperJobStatus,getPrivateStarterBundle,processDeveloperJob } from './developer-handoff.mjs';
 import {
   validId,commitOwnerTransition,createOwnerAIDraft,invoiceAssessment
 } from './order-engine.mjs';
@@ -54,7 +55,7 @@ export async function handleOwnerRequest(request,env={}) {
       const result=await markNotificationRead(env.DB,readMatch[1]);
       return json(result,result.ok?200:400);
     }
-    const match=/^\/api\/manager\/projects\/([0-9a-f-]{36})(?:\/(transition|improve-draft|invoice-assessment|approve-invoice|draft-test-invoice|bundle|preview-share|preview-revoke|preview-list|delete-request))?$/.exec(path);
+    const match=/^\/api\/manager\/projects\/([0-9a-f-]{36})(?:\/(transition|improve-draft|invoice-assessment|approve-invoice|draft-test-invoice|bundle|preview-share|preview-revoke|preview-list|delete-request|builder-status|builder-output|process-build))?$/.exec(path);
     if(!match||!validId(match[1]))return error('Not found',404);
     const id=match[1],operation=match[2]||'';
     const row=await rowOf(env.DB,id);
@@ -64,7 +65,13 @@ export async function handleOwnerRequest(request,env={}) {
       const parsed={...row};
       try{parsed.answers=JSON.parse(row.answers_json);}catch{parsed.answers={};}
       delete parsed.answers_json;
-      return json({project:parsed,invoice_eligibility:invoiceAssessment(row),abandoned_delete_eligibility:abandonedDeletionEligibility(row)});
+      return json({project:parsed,invoice_eligibility:invoiceAssessment(row),abandoned_delete_eligibility:abandonedDeletionEligibility(row),developer_build:await getDeveloperJobStatus(env.DB,id)});
+    }
+    if(request.method==='GET'&&operation==='builder-status')
+      return json(await getDeveloperJobStatus(env.DB,id));
+    if(request.method==='GET'&&operation==='builder-output'){
+      const result=await getPrivateStarterBundle(env.DB,id);
+      return json(result,result.ok?200:409);
     }
     if(request.method==='GET'&&operation==='bundle'){
       let answers;
@@ -80,6 +87,16 @@ export async function handleOwnerRequest(request,env={}) {
     if(request.method==='GET'&&operation==='invoice-assessment')
       return json({project_reference:id,assessment:invoiceAssessment(row)});
     if(request.method!=='POST')return error('Method not allowed',405);
+    if(operation==='process-build'){
+      const payload=await parseBody(request,1500);
+      if(payload?.confirm!=='PROCESS_PRIVATE_STARTER_ONLY' ||
+         payload?.expectedRowVersion!==row.row_version)
+        return error('Explicit authorized build request and current project version required',409);
+      if(env.AUTO_BUILD_HANDOFF_APPROVED!=='true')
+        return error('Developer handoff is not approved for processing',503);
+      const result=await processDeveloperJob(env.DB,id,env);
+      return json(result,result.ok?200:409);
+    }
     if(operation==='delete-request'){
       const payload=await parseBody(request,1200);
       if(payload?.confirm!=='DELETE_ABANDONED_REQUEST'||payload?.projectReference!==id||
