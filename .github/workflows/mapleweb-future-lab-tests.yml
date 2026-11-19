@@ -1,0 +1,101 @@
+name: MapleWeb Future Vision Lab browser tests
+on:
+  push:
+    branches: [mapleweb-ai-agents]
+    paths:
+      - .github/workflows/mapleweb-future-lab-tests.yml
+      - public/future-lab.js
+      - public/future-lab.css
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify existing backend, source and safe design code
+        run: |
+          npm test
+          node --check public/future-lab.js
+          node --check public/chat-experience.js
+          if grep -Eq 'fetch\(|localStorage|sessionStorage' public/future-lab.js; then echo 'Design Lab must not send or store user data'; exit 1; fi
+      - name: Install Chromium
+        run: |
+          npm install --no-save --no-audit --no-fund playwright
+          npx playwright install --with-deps chromium
+      - name: Start local website preview
+        run: |
+          mkdir -p browser-artifacts
+          python3 -m http.server 8765 --bind 127.0.0.1 --directory public >/tmp/maple-future-web.log 2>&1 &
+          sleep 2
+      - name: Test interactive Lab, golden intro, mobile/desktop layouts, and live chat
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {chromium} from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const base='http://127.0.0.1:8765/';
+          const page=await browser.newPage({viewport:{width:375,height:800},reducedMotion:'no-preference'});
+          const errors=[];
+          page.on('pageerror',e=>errors.push(e.message));
+          await page.goto(base,{waitUntil:'networkidle'});
+          await page.locator('#mw-gold-intro').waitFor({state:'visible',timeout:6000});
+          await page.locator('#mw-intro-skip').click();
+          await page.locator('#mw-gold-intro').waitFor({state:'hidden',timeout:4000});
+          assert.equal(await page.locator('.mw-future-hero').count(),1);
+          assert.equal(await page.locator('#design-lab').count(),1);
+          assert.equal(await page.locator('#mw-lab-preview-name').innerText(),'HAZEL & OAK');
+          assert.equal(await page.locator('[data-mw-business="cafe"]').getAttribute('aria-pressed'),'true');
+          await page.locator('[data-mw-business="studio"]').click();
+          assert.equal(await page.locator('#mw-lab-preview-name').innerText(),'SOLA STUDIO');
+          assert.equal(await page.locator('[data-mw-business="studio"]').getAttribute('aria-pressed'),'true');
+          assert.equal(await page.locator('[data-mw-business="cafe"]').getAttribute('aria-pressed'),'false');
+          await page.locator('[data-mw-look="classic"]').click();
+          assert.equal(await page.locator('#mw-lab-preview').getAttribute('data-look'),'classic');
+          await page.locator('[data-mw-business="services"]').click();
+          assert.equal(await page.locator('#mw-lab-preview-name').innerText(),'NORTHLINE');
+          await page.locator('#mw-lab-view-mobile').click();
+          assert.equal(await page.locator('#mw-lab-preview').evaluate(x=>x.classList.contains('mw-lab-mobile')),true);
+          assert.equal(await page.locator('#mw-lab-view-mobile').getAttribute('aria-pressed'),'true');
+          await page.locator('#mw-lab-view-desktop').click();
+          assert.equal(await page.locator('#mw-lab-preview').evaluate(x=>x.classList.contains('mw-lab-mobile')),false);
+          await page.locator('[data-mw-business="cafe"]').click();
+          await page.locator('[data-mw-look="luminous"]').click();
+          assert.equal(await page.locator('#mw-lab-preview-name').innerText(),'HAZEL & OAK');
+          assert.equal(await page.locator('#mw-lab-preview').getAttribute('data-look'),'luminous');
+          assert.equal(await page.locator('.mw-example').count(),3);
+          assert.equal(await page.locator('.mw-faq details').count(),4);
+          assert.equal(await page.locator('.price').count(),6);
+          assert.equal(await page.locator('.mw-conversation').count(),1);
+          assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),true,'375px horizontal overflow');
+          await page.screenshot({path:'browser-artifacts/future-mobile.png',fullPage:true});
+          const desktop=await browser.newPage({viewport:{width:1440,height:900},reducedMotion:'reduce'});
+          desktop.on('pageerror',e=>errors.push(e.message));
+          await desktop.goto(base,{waitUntil:'networkidle'});
+          assert.equal(await desktop.locator('.mw-future-hero').count(),1);
+          assert.equal(await desktop.locator('.mw-lab-shell').count(),1);
+          await desktop.screenshot({path:'browser-artifacts/future-desktop.png',fullPage:true});
+          for(const width of [320,375,768,1024,1440]){
+            await desktop.setViewportSize({width,height:800});
+            await desktop.goto(base,{waitUntil:'networkidle'});
+            assert.equal(await desktop.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),true,'Horizontal overflow at '+width);
+          }
+          await desktop.goto(base+'build-with-ai.html',{waitUntil:'networkidle'});
+          assert.equal(await desktop.locator('.mw-conversation').count(),1);
+          assert.equal(await desktop.locator('textarea#answer').count(),1);
+          assert.deepEqual(errors,[]);
+          console.log('PASS futuristic hero, interactive business/style/device switches, navigation, golden opening, pricing, ChatGPT-style chat, mobile and desktop');
+          await browser.close();
+          JS
+      - name: Save design preview screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mapleweb-future-vision-lab-screenshots
+          path: browser-artifacts/
+          retention-days: 7
