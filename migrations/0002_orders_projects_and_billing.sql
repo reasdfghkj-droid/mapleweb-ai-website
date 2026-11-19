@@ -28,6 +28,8 @@ CREATE TABLE IF NOT EXISTS projects (
   quote_evidence_reference TEXT,
   quote_acceptance_evidence_reference TEXT,
   customer_approval_evidence_reference TEXT,
+  customer_receipt_evidence_reference TEXT,
+  revision_evidence_reference TEXT,
   invoice_due_days INTEGER,
   invoice_due_terms_accepted INTEGER NOT NULL DEFAULT 0 CHECK(invoice_due_terms_accepted IN (0,1)),
   owner_approved_invoice INTEGER NOT NULL DEFAULT 0 CHECK(owner_approved_invoice IN (0,1)),
