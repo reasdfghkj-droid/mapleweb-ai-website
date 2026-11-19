@@ -38,6 +38,7 @@ jobs:
           node tests/automation-phase2.test.mjs
           node tests/private-preview-inbox.test.mjs
           node tests/chat-developer-handoff.test.mjs
+          node tests/scope-pricing.test.mjs
       - name: Validate all four D1 database migrations
         run: |
           python3 - <<'PY'

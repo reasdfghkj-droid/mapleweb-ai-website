@@ -4,7 +4,7 @@
 
 ## What this release does
 - New premium green-and-gold Sales Studio at \`/sales.html\` linked from the homepage and the planning chat.
-- Seven-step, mobile-friendly customer qualification: business, goal, page count, features, budget, style, and timing.
+- Six-step, mobile-friendly customer consultation: business, goal, page count, features, style, and timing. The customer is not asked for a budget.
 - Honest rules-based package recommendation using exactly the six approved CAD ranges:
   1. Simple 1–2 pages: $500–$800
   2. Simple 3–5 pages: $900–$1,500
@@ -12,7 +12,7 @@
   4. Professional custom design: $2,300–$3,000
   5. Advanced booking or payment: $3,000–$4,500
   6. Advanced online store or integrations: $4,500–$7,000
-- Shows budget mismatch honestly instead of inventing a discount or promising a final price.
+- Shows a transparent estimated CAD range based on pages, features and design, without asking what customers can afford. Final scope, taxes and third-party charges are confirmed in a written quote.
 - Customers can copy or download a preliminary estimate locally without sending anything.
 - If an independently configured and approved secure intake API is available, the page reveals an optional consent-based quote request. A successful result says it is **saved**, not an accepted sale or agent-delivered message.
 
