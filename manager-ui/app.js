@@ -129,6 +129,19 @@ $('aiDraft').addEventListener('click',async()=>{
     notice('Private AI draft prepared for owner review.');await load(current.id);
   }catch(e){notice(e.message,true);}
 });
+$('downloadStarter').addEventListener('click',async()=>{
+  if(!current)return;
+  try{
+    const bundle=await api('/api/manager/projects/'+current.id+'/bundle');
+    if(!Array.isArray(bundle.files)||!bundle.files.length)throw Error('No files returned');
+    const blob=new Blob([JSON.stringify(bundle,null,2)],{type:'application/json;charset=utf-8'});
+    const url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download='mapleweb-private-starter-'+current.id.slice(0,8)+'.json';
+    document.body.append(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    notice('Private starter source downloaded (not published).');
+  }catch(e){notice(e.message,true);}
+});
 $('approveInvoice').addEventListener('click',async()=>{
   if(!current)return;
   if(!window.confirm('Confirm the customer received the approved final website and you reviewed the final invoice amount and agreed terms?'))return;
