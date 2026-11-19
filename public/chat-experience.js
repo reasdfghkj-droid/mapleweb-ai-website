@@ -1,6 +1,6 @@
 /* MapleWeb AI Conversation Studio — friendly, rule-based website planner.
-   No generative AI model, no customer-data transmission, no automatic publication.
-   Nothing is stored on this device or sent to a server by this script. */
+   No generative AI model or automatic publication. Customer data is submitted only with explicit consent.
+   Planning answers remain in this page unless the customer chooses secure Developer handoff. */
 (function(){
  'use strict';
  const topics=[
@@ -51,7 +51,7 @@
  const steps=document.createElement('ol');steps.className='mw-chat-steps';
  for(const item of topics){const li=document.createElement('li');li.textContent=item.label;steps.append(li);}
  const sideFoot=document.createElement('p');sideFoot.className='mw-chat-side-foot';
- sideFoot.textContent='Private guided planning. Your messages are not automatically saved, submitted, or sent to a website builder.';
+ sideFoot.textContent='Private planning. Only your completed website requirements are sent when you choose Developer handoff and give consent.';
  side.append(logo,newButton,sideLabel,steps,sideFoot);
  const main=document.createElement('div');main.className='mw-chat-main';
  const mainTitle=header.querySelector('strong');
@@ -64,10 +64,10 @@
  if(mini.parentElement)mini.parentElement.append(status);
  const composer=document.createElement('div');composer.className='mw-chat-composer';
  const footnote=document.createElement('p');footnote.className='mw-chat-footnote';
- footnote.textContent='Website planning only · Your messages stay in this page · No automatic submission';
+ footnote.textContent='Your plan is private until you choose Send to Website Developer and give consent';
  composer.append(form,footnote);
  main.append(header,oldLog,composer);layout.append(side,main);root.replaceChildren(layout);
- let answers={},busy=false,previewed=false;
+ let answers={},busy=false,previewed=false,submittedReference=null;
  function step(){const i=topics.findIndex(function(t){return !answers[t.key];});return i<0?topics.length:i;}
  function updateProgress(){
   const current=step();
@@ -109,7 +109,7 @@
   if(i<topics.length){addMessage('assistant',topics[i].question);addOptions(topics[i].choices,false);}
  }
  function reset(){
-  answers={};busy=false;previewed=false;
+  answers={};busy=false;previewed=false;submittedReference=null;
   oldLog.replaceChildren();field.value='';field.disabled=false;send.disabled=false;
   addMessage('assistant',"Hello! I'm MapleWeb AI's website planning assistant.\n\nTell me what you want to build, or ask me anything about our website services and prices.");
   addOptions(['How much does a website cost?','When do I pay?','Show me website examples'],true);
@@ -153,7 +153,7 @@
   if(/(?:book|booking|online shop|store|e.?commerce|payment feature|checkout)/.test(v))return 'Yes, we can plan a website with bookings, payments, or a shop. These advanced features may involve third-party services, extra costs, and additional review before a quote.';
   if(/(?:timeline|how long|deliver|finish|ready|quick|fast)/.test(v))return 'A website timeline depends on its pages, features, design reviews, and approvals. We will agree on the scope and schedule before work starts.';
   if(/(?:publish|approval|go live|launch)/.test(v))return 'No customer website will be published without the customer and owner approving the current version. Sample previews stay private.';
-  if(/(?:send|submit|receive|contact|email|phone|call)/.test(v))return 'Secure automatic customer submissions are not enabled yet. For now, you can copy or download your completed website plan; it has not been sent to our team.';
+  if(/(?:send|submit|receive|contact|email|phone|call)/.test(v))return 'After answering the seven website-planning questions, select “Send to Website Developer.” You will add your name, email and any extra instructions, then give consent. If secure intake is not enabled, we will tell you clearly that nothing was sent.';
   if(/(?:chatgpt|are you ai|real ai|language model|human|bot|intelligent)/.test(v))return 'I am a guided website planning assistant with pre-written rules, not a connected generative AI model. I can explain services, answer common website questions, and build a personalized plan from your answers.';
   if(/(?:domain|hosting|seo|google|search engine)/.test(v))return 'We can discuss hosting, domains, and search-friendly design during planning. Any ongoing fees, technical setup, and included services will be confirmed in the quote. Search rankings are not guaranteed.';
   if(/(?:website|build|create|make|design|develop|restaurant|cafe|salon)/.test(v))return 'We can help plan a professional website for that kind of business. Tell me what you do, and I will help work out the pages, features, style, and a suitable price range.';
@@ -163,7 +163,7 @@
  function summary(){
   return 'MapleWeb AI — Your Website Plan\n\n'+
    topics.map(function(t){return t.label+': '+(answers[t.key]||'Not decided');}).join('\n')+
-   '\n\nPayment policy: No upfront deposit; pay after the finished website has been delivered and handover confirmed. Final price, taxes and due date are agreed in writing first.\n\nPlanning summary only. Not submitted, not a confirmed quote, and not published. Customer and owner approval required.';
+   '\n\nPayment policy: No upfront deposit; pay after the finished website has been delivered and handover confirmed. Final price, taxes and due date are agreed in writing first.\n\n'+(submittedReference?'Saved for private Developer review. Reference: '+submittedReference+'. No accepted order or finished website.':'Planning summary only. Not submitted, not a confirmed quote, and not published.')+' Customer and owner approval required.';
  }
  function previewHTML(){
   const business=textSafe(answers.business),goal=textSafe(answers.goal);
@@ -186,6 +186,18 @@
   action('Copy my plan',async function(){
     try{await navigator.clipboard.writeText(summary());addMessage('assistant','Your website plan was copied.');}
     catch(e){addMessage('assistant','Copy was not available here. You can download the plan instead.');}
+  });
+  action('Send to Website Developer',function(){
+    if(!window.MapleWebHandoff||typeof window.MapleWebHandoff.open!=='function'){
+      addMessage('assistant','The secure Developer submission form is unavailable. No information was sent. Save your plan instead.');
+      return;
+    }
+    window.MapleWebHandoff.open({
+      host:oldLog,
+      getAnswers:function(){return Object.assign({},answers);},
+      addMessage:addMessage,
+      onSuccess:function(data){submittedReference=data.reference;}
+    });
   });
   action('Download plan',function(){download('mapleweb-website-plan.txt',summary());});
   action('Preview sample website',function(){
