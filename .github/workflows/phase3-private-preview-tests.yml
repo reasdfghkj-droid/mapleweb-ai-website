@@ -1,0 +1,64 @@
+name: MapleWeb Phase 3 private preview and inbox checks
+on:
+  push:
+    branches: [main, mapleweb-private-previews-notifications-2026-11-19]
+    paths:
+      - 'workers/**'
+      - 'manager-ui/**'
+      - 'migrations/**'
+      - 'wrangler.jsonc'
+      - 'wrangler.manager.jsonc'
+      - 'tests/**'
+      - '.github/workflows/phase3-private-preview-tests.yml'
+  pull_request:
+    paths:
+      - 'workers/**'
+      - 'manager-ui/**'
+      - 'migrations/**'
+      - 'wrangler.jsonc'
+      - 'wrangler.manager.jsonc'
+      - 'tests/**'
+      - '.github/workflows/phase3-private-preview-tests.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate all automation and preview safety suites
+        run: |
+          node tests/sales-studio.test.mjs
+          node tests/post-delivery.test.mjs
+          node tests/automation-phase2.test.mjs
+          node tests/private-preview-inbox.test.mjs
+      - name: Validate all three D1 migrations in memory
+        run: |
+          python3 - <<'PY'
+          import sqlite3,pathlib,uuid
+          db=sqlite3.connect(':memory:')
+          db.execute('PRAGMA foreign_keys=ON')
+          for path in ['migrations/0001_secure_sales_submissions.sql','migrations/0002_orders_projects_and_billing.sql','migrations/0003_private_previews_notifications.sql']:
+              db.executescript(pathlib.Path(path).read_text())
+              print('PASS migration',path)
+          tables={t[0] for t in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+          assert {'submissions','projects','project_events','stripe_webhook_events','invoice_operations','preview_shares','owner_notifications'}.issubset(tables)
+          sid=str(uuid.uuid4());pid=str(uuid.uuid4())
+          db.execute("INSERT INTO submissions(id,created_at,name,email,answers_json,status) VALUES (?,?,?,?,?,?)",(sid,'2026-01-01T00:00:00.000Z','Test Customer','test@example.com','{}','NEW'))
+          db.execute("INSERT INTO projects(id,submission_id,created_at,updated_at,draft_html) VALUES (?,?,?,?,?)",(pid,sid,'2026-01-01T00:00:00.000Z','2026-01-01T00:00:00.000Z','<html>safe</html>'))
+          db.execute("INSERT INTO owner_notifications(id,project_id,category,created_at) VALUES (?,?,?,?)",(str(uuid.uuid4()),pid,'NEW_REQUEST','2026-01-01T00:00:00.000Z'))
+          db.execute("INSERT INTO preview_shares(id,project_id,version,token_hash,created_at,expires_at) VALUES (?,?,?,?,?,?)",(str(uuid.uuid4()),pid,1,'f'*64,'2026-01-01T00:00:00.000Z','2027-01-01T00:00:00.000Z'))
+          db.execute('DELETE FROM submissions WHERE id=?',(sid,))
+          assert db.execute('SELECT COUNT(*) FROM projects').fetchone()[0]==0
+          assert db.execute('SELECT COUNT(*) FROM preview_shares').fetchone()[0]==0
+          assert db.execute('SELECT COUNT(*) FROM owner_notifications').fetchone()[0]==0
+          print('PASS schema, insertion and privacy-delete cascade')
+          PY
+      - name: Validate public and private Cloudflare Worker bundles WITHOUT publishing
+        run: |
+          npm install --no-audit --no-fund
+          npx wrangler deploy --dry-run --outdir ./dist/public --config wrangler.jsonc
+          npx wrangler deploy --dry-run --outdir ./dist/private --config wrangler.manager.jsonc

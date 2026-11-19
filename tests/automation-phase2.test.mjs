@@ -137,7 +137,7 @@ assert.equal(toInvoiceGateProject(delivered).paymentModel,'post_delivery');
 // D1 mock proves consented requests use batch insert with matching submission and project.
 const prepared=[];
 const db={prepare(sql){const q={sql,bind(...params){this.params=params;return this}};prepared.push(q);return q},
-  async batch(statements){assert.equal(statements.length,3);return statements.map(()=>({success:true,meta:{changes:1}}));}};
+  async batch(statements){assert.equal(statements.length,4);return statements.map(()=>({success:true,meta:{changes:1}}));}};
 const lead=await saveLeadAsProject(db,{
   submissionId:'22222222-2222-4222-8222-222222222222',
   projectId:'33333333-3333-4333-8333-333333333333',
@@ -146,8 +146,10 @@ const lead=await saveLeadAsProject(db,{
 assert.equal(lead.saved,true);
 assert.equal(lead.private_preview_ready,true);
 assert.equal(lead.payment_due_now,false);
+assert.equal(lead.owner_inbox_recorded,true);
+assert.equal(lead.notification_email_sent,false);
 assert.equal(lead.published,false);
-assert.equal(prepared.length,3);
+assert.equal(prepared.length,4);
 assert.ok(prepared.some(p=>p.sql.startsWith('INSERT INTO projects')));
 
 let stripeCalls=0;

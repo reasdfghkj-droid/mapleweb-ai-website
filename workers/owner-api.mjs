@@ -6,6 +6,9 @@
 import { ownerAuthed, parseBody } from './mapleweb-agents.mjs';
 import { createSandboxInvoiceDraft } from './stripe-invoices.mjs';
 import { buildWebsiteStarterBundle } from './site-bundle.mjs';
+import { createPrivatePreviewShare,revokePrivatePreviewShares } from './private-previews.mjs';
+import { listOwnerNotifications,markNotificationRead } from './owner-inbox.mjs';
+import { abandonedDeletionEligibility,deleteAbandonedRequest } from './order-retention.mjs';
 import {
   validId,commitOwnerTransition,createOwnerAIDraft,invoiceAssessment
 } from './order-engine.mjs';
@@ -41,7 +44,17 @@ export async function handleOwnerRequest(request,env={}) {
       ).all();
       return json({projects:results?.results||[]});
     }
-    const match=/^\/api\/manager\/projects\/([0-9a-f-]{36})(?:\/(transition|improve-draft|invoice-assessment|approve-invoice|draft-test-invoice|bundle))?$/.exec(path);
+    if(request.method==='GET'&&path==='/api/manager/notifications'){
+      return json(await listOwnerNotifications(env.DB));
+    }
+    const readMatch=/^\/api\/manager\/notifications\/([0-9a-f-]{36})\/read$/.exec(path);
+    if(request.method==='POST'&&readMatch&&validId(readMatch[1])){
+      const body=await parseBody(request,700);
+      if(body?.confirm!=='MARK_NOTIFICATION_READ')return error('Explicit notification acknowledgment required');
+      const result=await markNotificationRead(env.DB,readMatch[1]);
+      return json(result,result.ok?200:400);
+    }
+    const match=/^\/api\/manager\/projects\/([0-9a-f-]{36})(?:\/(transition|improve-draft|invoice-assessment|approve-invoice|draft-test-invoice|bundle|preview-share|preview-revoke|preview-list|delete-request))?$/.exec(path);
     if(!match||!validId(match[1]))return error('Not found',404);
     const id=match[1],operation=match[2]||'';
     const row=await rowOf(env.DB,id);
@@ -51,16 +64,47 @@ export async function handleOwnerRequest(request,env={}) {
       const parsed={...row};
       try{parsed.answers=JSON.parse(row.answers_json);}catch{parsed.answers={};}
       delete parsed.answers_json;
-      return json({project:parsed,invoice_eligibility:invoiceAssessment(row)});
+      return json({project:parsed,invoice_eligibility:invoiceAssessment(row),abandoned_delete_eligibility:abandonedDeletionEligibility(row)});
     }
     if(request.method==='GET'&&operation==='bundle'){
       let answers;
       try{answers=JSON.parse(row.answers_json)}catch{return error('Stored requirements invalid',503);}
       return json(buildWebsiteStarterBundle(answers));
     }
+    if(request.method==='GET'&&operation==='preview-list'){
+      const result=await env.DB.prepare(
+        'SELECT id,version,created_at,expires_at,revoked_at,views,max_views FROM preview_shares WHERE project_id=? ORDER BY created_at DESC LIMIT 30'
+      ).bind(id).all();
+      return json({project_reference:id,shares:result?.results||[],raw_tokens_never_stored:true});
+    }
     if(request.method==='GET'&&operation==='invoice-assessment')
       return json({project_reference:id,assessment:invoiceAssessment(row)});
     if(request.method!=='POST')return error('Method not allowed',405);
+    if(operation==='delete-request'){
+      const payload=await parseBody(request,1200);
+      if(payload?.confirm!=='DELETE_ABANDONED_REQUEST'||payload?.projectReference!==id||
+         payload?.expectedRowVersion!==row.row_version)
+        return error('Explicit project-matched deletion and current version required',409);
+      const result=await deleteAbandonedRequest(env.DB,row);
+      return json(result,result.ok?200:409);
+    }
+    if(operation==='preview-share'){
+      const payload=await parseBody(request,1300);
+      if(payload?.confirm!=='CREATE_PRIVATE_CUSTOMER_PREVIEW'||
+         payload?.expectedRowVersion!==row.row_version)
+        return error('Confirm the exact project version before sharing a preview',409);
+      if(env.PRIVATE_PREVIEWS_APPROVED!=='true')
+        return error('Private preview sharing has not been approved and configured',503);
+      const result=await createPrivatePreviewShare(env.DB,row,env,payload.hours??48);
+      return json(result,result.ok?200:409);
+    }
+    if(operation==='preview-revoke'){
+      const payload=await parseBody(request,900);
+      if(payload?.confirm!=='REVOKE_ALL_CUSTOMER_PREVIEW_LINKS')
+        return error('Explicit link revocation confirmation required',409);
+      const result=await revokePrivatePreviewShares(env.DB,id);
+      return json(result,result.ok?200:409);
+    }
     if(operation==='transition'){
       const payload=await parseBody(request,5000);
       if(!payload||typeof payload!=='object')return error('Invalid request');
