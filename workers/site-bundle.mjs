@@ -72,8 +72,8 @@ export function buildWebsiteStarterBundle(raw) {
    files:[...files.map(p=>makePage(p,files,a)),{path:'styles.css',content:style},
      {path:'MAPLEWEB_PRIVATE_BRIEF.txt',content:
        'OWNER REVIEW COPY - DO NOT PUBLISH\n\n'+
-       keys.map(k=>k+': '+a[k]).join('\n')+
-       '\nAdditional instructions: '+(a.additional_details||'None')+
+       keys.map(k=>k+': '+escape(a[k])).join('\n')+
+       '\nAdditional instructions: '+escape(a.additional_details||'None')+
        '\n\nCustomer contact details are stored separately in the protected project record.'}],
    instructions:'These are sample pages, not a complete contracted customer site. Save HTML and CSS into one directory, replace placeholder text, implement requested features, test, and obtain customer and owner approval before publishing.'
  };
