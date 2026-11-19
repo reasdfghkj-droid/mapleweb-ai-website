@@ -1,0 +1,54 @@
+name: Verify golden MapleWeb production site
+on:
+  push:
+    branches: [mapleweb-ai-agents]
+    paths:
+      - .github/workflows/mapleweb-golden-live-check.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Verify golden homepage, real chat and safe APIs over the public network
+        run: |
+          python3 - <<'PY'
+          import json,time,urllib.request,urllib.error
+          origin='https://mapleweb-ai-website.reasdfghkj.workers.dev'
+          def fetch(path,method='GET',data=None):
+            body=None if data is None else json.dumps(data).encode()
+            headers={'User-Agent':'MapleWeb-Golden-Release-Verifier/1.0'}
+            if body is not None: headers['Content-Type']='application/json'
+            req=urllib.request.Request(origin+path,headers=headers,data=body,method=method)
+            try:
+              with urllib.request.urlopen(req,timeout=18) as res:return res.status,res.read(500_000).decode('utf-8','replace')
+            except urllib.error.HTTPError as exc:return exc.code,exc.read(500_000).decode('utf-8','replace')
+          markers=['id="mw-gold-intro"','Skip intro','Replay the golden welcome',"You've Struck", '--base:#061b17', '$4,500–$7,000','Build My Website with AI']
+          for attempt in range(12):
+            code,html=fetch('/')
+            ready=code==200 and all(m in html for m in markers)
+            print('Check',attempt+1,'homepage HTTP',code,'golden markers present',ready)
+            if ready:break
+            if attempt==11:raise SystemExit('FAIL Golden website not visible after deployment window')
+            time.sleep(10)
+          print('PASS golden welcome and six CAD prices visible')
+          code,chat=fetch('/build-with-ai.html')
+          assert code==200 and 'Green & gold MapleWeb theme' in chat and 'id="chat-form"' in chat, 'Golden chat page missing'
+          print('PASS green-and-gold planning chat HTTP 200')
+          code,raw=fetch('/api/config');config=json.loads(raw)
+          assert code==200 and config['submissions_enabled'] is False and config['publishing_enabled'] is False
+          print('PASS customer submissions and publishing still disabled')
+          code,raw=fetch('/api/prices');prices=json.loads(raw)
+          assert code==200 and len(prices.get('prices',[]))==6
+          print('PASS six public CAD price ranges API')
+          code,raw=fetch('/api/draft','POST',{'answers':{'business':'Synthetic only','goal':'Preview a concept'}})
+          draft=json.loads(raw)
+          assert code==200 and draft.get('draft_only') is True and draft.get('published') is False
+          print('PASS synthetic Developer draft remains unpublished')
+          code,_=fetch('/api/manager/status')
+          assert code==404, 'Manager route unexpectedly public'
+          print('PASS Manager admin routes are not exposed on the public website')
+          print('SUCCESS Golden live website, planning chat and secure Developer API verified')
+          PY
