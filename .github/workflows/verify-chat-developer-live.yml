@@ -1,0 +1,64 @@
+name: Verify chat to Developer handoff live
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'public/**'
+      - 'workers/**'
+      - '.github/workflows/verify-chat-developer-live.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify safe and published chat to Developer handoff on Cloudflare
+        run: |
+          python3 - <<'PY'
+          import json,time,urllib.request,urllib.error
+          base='https://mapleweb-ai-website.reasdfghkj.workers.dev'
+          def get(path):
+              req=urllib.request.Request(base+path,headers={'User-Agent':'MapleWeb-Chat-Developer-Release-Check'})
+              try:
+                  with urllib.request.urlopen(req,timeout=20) as response:
+                      return response.status,response.read(200000).decode('utf-8','replace')
+              except urllib.error.HTTPError as e:
+                  return e.code,e.read(200000).decode('utf-8','replace')
+          ok=False
+          for attempt in range(20):
+              status,health=get('/health')
+              try: payload=json.loads(health)
+              except: payload={}
+              ok=(status==200 and payload.get('developer_handoff_feature_present') is True
+                  and payload.get('developer_handoff_enabled') is False
+                  and payload.get('developer_builder_type')=='review-only-starter-template')
+              print('Developer handoff live check',attempt+1,'HTTP',status,'new code',ok,flush=True)
+              if ok:break
+              if attempt<19:time.sleep(8)
+          if not ok:raise SystemExit('Chat-to-Developer release not verified live; no publication claim.')
+          status,config=get('/api/config')
+          assert status==200
+          cfg=json.loads(config)
+          assert cfg.get('submissions_enabled') is False,'Sensitive customer intake must remain off until configured'
+          assert cfg.get('builder_handoff_enabled') is False,'Build job execution must remain off until approved'
+          assert cfg.get('ai_model_connected') is False,'Do not claim connected generative model'
+          assert cfg.get('publishing_enabled') is False,'No automatic customer website publishing'
+          status,js=get('/customer-handoff.js')
+          assert status==200 and 'Send my plan to Website Developer' in js and 'turnstileToken:securityToken' in js
+          status,css=get('/customer-handoff.css')
+          assert status==200 and '.mw-handoff-panel' in css
+          status,chat=get('/chat-experience.js')
+          assert status==200 and "action('Send to Website Developer'" in chat
+          status,home=get('/')
+          assert status==200 and '/customer-handoff.js' in home and 'No upfront deposit' in home
+          status,planner=get('/build-with-ai.html')
+          assert status==200 and '/customer-handoff.js' in planner
+          status,prices=get('/api/prices')
+          assert status==200 and len(json.loads(prices)['prices'])==6
+          status,manager=get('/api/manager/projects')
+          assert status==404
+          status,sales=get('/sales.html')
+          assert status==200
+          print('SUCCESS: Customer handoff UI and backend code LIVE. Secure customer submissions and automatic building correctly remain disabled pending account setup.')
+          PY
