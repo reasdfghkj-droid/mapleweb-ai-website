@@ -15,6 +15,7 @@
     "AI_DRAFTS_APPROVED": "false",
     "STRIPE_TEST_DRAFTS_APPROVED": "false",
     "PRIVATE_PREVIEWS_APPROVED": "false",
+    "AUTO_BUILD_HANDOFF_APPROVED": "false",
     "PUBLIC_SITE_ORIGIN": "https://mapleweb-ai-website.reasdfghkj.workers.dev"
   }
 }
