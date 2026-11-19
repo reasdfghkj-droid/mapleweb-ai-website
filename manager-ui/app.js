@@ -25,6 +25,26 @@ function cell(tag,text,parent,cls){
   if(cls)n.className=cls;
   parent.append(n);return n;
 }
+async function loadInbox(){
+  const inbox=$('inbox');const result=await api('/api/manager/notifications');
+  inbox.replaceChildren();
+  if(!result.notifications?.length){cell('p','No new project notices.',inbox,'muted');return;}
+  for(const n of result.notifications){
+    const box=document.createElement('div');box.className='project';
+    cell('strong',n.category.replaceAll('_',' ')+' · '+n.status,box);
+    cell('span',new Date(n.created_at).toLocaleString('en-CA')+(n.read_at?' · Reviewed':' · New'),box);
+    const open=document.createElement('button');open.type='button';open.className='secondary';open.textContent='Open project';
+    open.addEventListener('click',()=>load(n.project_id));box.append(open);
+    if(!n.read_at){
+      const read=document.createElement('button');read.type='button';read.className='secondary';read.textContent='Mark read';
+      read.addEventListener('click',async()=>{
+        try{await api('/api/manager/notifications/'+n.id+'/read',{confirm:'MARK_NOTIFICATION_READ'});await loadInbox();}
+        catch(e){notice(e.message,true);}
+      });box.append(read);
+    }
+    inbox.append(box);
+  }
+}
 async function refresh(){
   const results=await api('/api/manager/projects');
   const list=$('projects');list.replaceChildren();
@@ -83,15 +103,16 @@ $('connect').addEventListener('click',async()=>{
     if(!result.manager_only)throw Error('Manager status could not be verified.');
     $('workspace').hidden=false;$('disconnect').disabled=false;
     status('Connected to protected MapleWeb AI Manager. Private data stays in this tab.');
-    await refresh();
+    await Promise.all([refresh(),loadInbox()]);
   }catch(e){token='';$('workspace').hidden=true;status(e.message,true);}
 });
 $('disconnect').addEventListener('click',()=>{
   token='';current=null;$('workspace').hidden=true;$('disconnect').disabled=true;
-  $('projects').replaceChildren();$('details').replaceChildren();
+  $('projects').replaceChildren();$('details').replaceChildren();$('inbox').replaceChildren();$('previewUrl').value='';
   status('Disconnected. The token was cleared from memory.');
 });
 $('refresh').addEventListener('click',()=>refresh().catch(e=>notice(e.message,true)));
+$('refreshInbox').addEventListener('click',()=>loadInbox().catch(e=>notice(e.message,true)));
 $('record').addEventListener('click',async()=>{
   if(!current)return;
   const action=$('action').value;if(!action){notice('Choose a stage first.',true);return;}
@@ -142,6 +163,28 @@ $('downloadStarter').addEventListener('click',async()=>{
     notice('Private starter source downloaded (not published).');
   }catch(e){notice(e.message,true);}
 });
+$('createPreview').addEventListener('click',async()=>{
+  if(!current)return;
+  if(!window.confirm('Create a private 48-hour preview link for the intended customer? Share it securely. Anyone holding the link can view the approved sample until expiry or revocation.'))return;
+  try{
+    const result=await api('/api/manager/projects/'+current.id+'/preview-share',{
+      confirm:'CREATE_PRIVATE_CUSTOMER_PREVIEW',expectedRowVersion:current.row_version,hours:48
+    });
+    if(!result.ok)throw Error(result.error||'Preview sharing is unavailable');
+    $('previewUrl').value=result.url;
+    notice('Short-lived private draft link created. It is shown only once, not emailed or published.');
+  }catch(e){notice(e.message,true);}
+});
+$('revokePreviews').addEventListener('click',async()=>{
+  if(!current)return;
+  if(!window.confirm('Revoke ALL current private preview links for this project immediately?'))return;
+  try{
+    const x=await api('/api/manager/projects/'+current.id+'/preview-revoke',{confirm:'REVOKE_ALL_CUSTOMER_PREVIEW_LINKS'});
+    $('previewUrl').value='';
+    notice('Revoked '+(x.revoked_count||0)+' private preview link(s).');
+  }catch(e){notice(e.message,true);}
+});
+$('clearPreview').addEventListener('click',()=>{$('previewUrl').value='';});
 $('approveInvoice').addEventListener('click',async()=>{
   if(!current)return;
   if(!window.confirm('Confirm the customer received the approved final website and you reviewed the final invoice amount and agreed terms?'))return;
