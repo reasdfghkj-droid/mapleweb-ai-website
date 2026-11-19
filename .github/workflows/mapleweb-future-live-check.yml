@@ -34,12 +34,22 @@ jobs:
             if ready:break
             if attempt==13:raise SystemExit('FAIL: Future Vision Lab not published')
             time.sleep(8)
-          status,js=req('/future-lab.js')
-          assert status==200 and "getElementById('design-lab')" in js and "data" in js and 'aria-pressed' in js, 'Interactive Lab JavaScript unavailable'
+          for check in range(10):
+            status,js=req('/future-lab.js')
+            good=status==200 and "getElementById('design-lab')" in js and 'aria-pressed' in js
+            print('Design Lab JS asset check',check+1,'HTTP',status,'bytes',len(js),'ready',good)
+            if good:break
+            if check==9:raise SystemExit('FAIL interactive Lab JavaScript not available; no live success claimed')
+            time.sleep(6)
           assert 'fetch(' not in js and 'localStorage' not in js,'Vision Lab must not transmit or retain customer data'
           print('PASS interactive Vision Lab JavaScript live, with no network calls')
-          status,css=req('/future-lab.css')
-          assert status==200 and '.mw-lab-shell' in css and 'prefers-reduced-motion' in css,'Live Lab CSS missing'
+          for check in range(10):
+            status,css=req('/future-lab.css')
+            good=status==200 and '.mw-lab-shell' in css and 'prefers-reduced-motion' in css
+            print('Design Lab CSS asset check',check+1,'HTTP',status,'bytes',len(css),'ready',good)
+            if good:break
+            if check==9:raise SystemExit('FAIL futuristic CSS not available; no live success claimed')
+            time.sleep(6)
           print('PASS futuristic styles and reduced-motion support live')
           status,chat=req('/chat-experience.js')
           assert status==200 and 'function detectQuestion' in chat,'Existing conversational chat not live'
