@@ -19,7 +19,7 @@
 <section class="panel" id="actions" hidden><h2>Owner actions</h2><p class="muted">Actions require a current project and recorded evidence. No customer websites are published and no Stripe payment is collected by these controls.</p>
 <div class="grid">
 <div><label for="action">Move project to</label><select id="action">
-<option value="">Choose next stage</option><option value="REVIEWING">Review request</option><option value="QUOTED">Record approved written quote</option><option value="ACCEPTED">Record accepted quote</option><option value="BUILDING">Mark development started</option><option value="PREVIEW_READY">Mark private preview verified</option><option value="DELIVERED">Record delivered website and confirmed receipt</option><option value="CANCELLED">Cancel project</option></select></div>
+<option value="">Choose next stage</option><option value="REVIEWING">Review request</option><option value="QUOTED">Record approved written quote</option><option value="ACCEPTED">Record accepted quote</option><option value="BUILDING">Mark development started</option><option value="PREVIEW_READY">Mark private preview verified</option><option value="REVISE">Customer requested revisions (re-quote)</option><option value="DELIVERED">Record delivered website and confirmed receipt</option><option value="CANCELLED">Cancel project</option></select></div>
 <div><label for="finalAmount">Approved final amount (CAD)</label><input id="finalAmount" type="number" min="500" step="0.01" placeholder="e.g. 1200.00"></div>
 <div><label for="dueDays">Invoice due days (agreed in writing)</label><input id="dueDays" type="number" min="1" max="60" value="14"></div>
 <div><label for="quoteEvidence">Signed quote reference</label><input id="quoteEvidence" maxlength="180" placeholder="quote/signed-001"></div>
@@ -27,6 +27,7 @@
 <div><label for="deliveryEvidence">Delivered website handover reference</label><input id="deliveryEvidence" maxlength="180" placeholder="delivery/handover-001"></div>
 <div><label for="customerEvidence">Customer approval evidence reference</label><input id="customerEvidence" maxlength="180" placeholder="approval/version-001"></div>
 <div><label for="receiptEvidence">Customer receipt acknowledgment</label><input id="receiptEvidence" maxlength="180" placeholder="receipt/001"></div>
+<div><label for="revisionEvidence">Recorded customer revision reference</label><input id="revisionEvidence" maxlength="180" placeholder="revisions/request-001"></div>
 </div><div class="checks"><label><input id="previewCheck" type="checkbox"> Private preview independently checked</label>
 <label><input id="securityCheck" type="checkbox"> Security tests passed</label>
 <label><input id="customerApproved" type="checkbox"> Customer approved this exact version</label>
