@@ -19,7 +19,9 @@ function html(value) {
 }
 function cleanAnswers(input) {
   const a = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
-  return Object.fromEntries(keys.map(key => [key, text(a[key])]));
+  const cleaned=Object.fromEntries(keys.map(key => [key, text(a[key])]));
+  cleaned.additional_details=text(a.additional_details,900);
+  return cleaned;
 }
 function safeCopy(raw, answers) {
   const o = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
