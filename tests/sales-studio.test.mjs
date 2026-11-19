@@ -11,7 +11,7 @@ assert.ok(script,'sales script must exist');
 new vm.Script(script,{filename:'sales-inline.js'});
 assert.ok(home.includes('href="/sales.html"'), 'homepage must link sales page');
 assert.ok(planner.includes('href="/sales.html"'), 'planning page must link sales page');
-assert.ok(sales.includes('seven')||sales.includes('Question 1 of 7'), 'seven-step sales flow must exist');
+assert.ok(sales.includes('Question 1 of 6')&&sales.includes('max="6"'), 'six-step sales flow must exist');
 assert.ok(sales.includes("cfg.submissions_enabled!==true"),'fail closed when intake off');
 assert.ok(sales.includes('turnstileToken'),'must verify Turnstile before sending');
 assert.ok(sales.includes('consent:true'),'send only with explicit consent');
@@ -29,9 +29,9 @@ assert.ok(worker.includes("id: '"+id+"'"),'missing approved worker tier '+id);
 assert.ok(script.includes("id:'"+id+"'"),'missing approved sales tier '+id);
 assert.ok(script.includes('min:'+min+',max:'+max), 'wrong approved range '+id);
 }
-const match=script.match(/function has\(feature\)\{[\s\S]*?\}\s*function getPack\(\)\{[\s\S]*?\}\s*function budgetNumber/);
+const match=script.match(/function has\(feature\)\{[\s\S]*?\}\s*function getPack\(\)\{[\s\S]*?\}\s*function explainEstimate/);
 assert.ok(match,'pricing recommendation logic must be available');
-const helpers=match[0].slice(0,-'function budgetNumber'.length);
+const helpers=match[0].slice(0,-'function explainEstimate'.length);
 const scenarios=[
 [{pages:'1–2 pages',features:'Contact form',goal:'Showcase my services',style:'Modern and minimal'},'simple-1-2'],
 [{pages:'3–5 pages',features:'Photo gallery',goal:'Attract more customers',style:'Green and gold'},'simple-3-5'],
@@ -45,4 +45,6 @@ for(const [answers,want] of scenarios){
 const got=vm.runInNewContext(helpers+'\ngetPack().id',{answers,packs});
 assert.equal(got,want, 'wrong package recommendation for '+JSON.stringify(answers));
 }
-console.log('PASS sales script syntax, seven recommendation scenarios, six approved CAD prices, consent and safe disabled-by-default intake');
+assert.ok(!script.includes("{key:'budget'"), 'sales page must never ask the customer for a budget');
+assert.ok(!sales.includes('What is your approximate budget'), 'budget prompt must be absent');
+console.log('PASS six-step, no-budget sales wizard, seven scope recommendation scenarios, six approved CAD prices, consent and disabled-by-default intake');
