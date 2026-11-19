@@ -1,5 +1,6 @@
 import { buildStarterProject, improveDraftWithAI } from './website-studio.mjs';
 import { evaluatePostDeliveryInvoice } from '../billing/post-delivery-gate.mjs';
+import { notificationInsert } from './owner-inbox.mjs';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const STATES = Object.freeze(['NEW','REVIEWING','QUOTED','ACCEPTED','BUILDING','PREVIEW_READY','DELIVERED','CANCELLED']);
@@ -59,13 +60,15 @@ export async function saveLeadAsProject(db, data) {
     db.prepare('INSERT INTO projects (id,submission_id,created_at,updated_at,status,current_version,generator,draft_html) VALUES (?,?,?,?,?,?,?,?)')
       .bind(projectId,submissionId,createdAt,createdAt,'NEW',1,draft.generator,draft.draft_html),
     db.prepare('INSERT INTO project_events (id,project_id,created_at,action,actor,details_json) VALUES (?,?,?,?,?,?)')
-      .bind(crypto.randomUUID(),projectId,createdAt,'LEAD_RECEIVED','system','{"source":"consented-secure-intake"}')
+      .bind(crypto.randomUUID(),projectId,createdAt,'LEAD_RECEIVED','system','{"source":"consented-secure-intake"}'),
+    notificationInsert(db,projectId,'NEW_REQUEST',createdAt)
   ];
   const res=await db.batch(statements);
-  if (!Array.isArray(res) || res.length!==3 || res.some(x=>x?.success===false))
+  if (!Array.isArray(res) || res.length!==4 || res.some(x=>x?.success===false))
     throw new Error('Transaction did not commit');
   return {saved:true,reference:submissionId,project_reference:projectId,
     private_preview_ready:true,generated_by:draft.generator,delivered_to_agent:false,
+    owner_inbox_recorded:true,notification_email_sent:false,
     payment_due_now:false,published:false};
 }
 
@@ -173,8 +176,14 @@ export async function commitOwnerTransition(db, row, requested, input) {
   const stmt=db.prepare(sql).bind(...fields.map(([,v])=>v),row.id,row.row_version);
   const audit=db.prepare('INSERT INTO project_events(id,project_id,created_at,action,actor,details_json) SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM projects WHERE id=? AND row_version=?)')
     .bind(crypto.randomUUID(),row.id,plan.fields.updated_at,plan.event,'owner','{"verified_by":"owner-authenticated"}',row.id,row.row_version+1);
-  const res=await db.batch([stmt,audit]);
-  if(!Array.isArray(res)||res[0]?.meta?.changes!==1 || res[1]?.meta?.changes!==1)
+  const category=requested==='REVISE'?'REVISION_REQUESTED':
+    requested==='PREVIEW_READY'?'READY_FOR_REVIEW':
+    requested==='DELIVERED'?'DELIVERY_RECORDED':null;
+  const work=[stmt,audit];
+  if(category)work.push(notificationInsert(db,row.id,category,plan.fields.updated_at));
+  const res=await db.batch(work);
+  if(!Array.isArray(res)||res[0]?.meta?.changes!==1 || res[1]?.meta?.changes!==1||
+     (category&&res[2]?.meta?.changes!==1))
     return bad('Concurrent change or storage error; review current project before retrying');
   return {ok:true,status:plan.fields.status,version:row.row_version+1};
 }
