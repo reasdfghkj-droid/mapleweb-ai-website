@@ -1,0 +1,77 @@
+name: Verify automatic website pricing live
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'public/**'
+      - 'workers/**'
+      - '.github/workflows/verify-website-pricing-live.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify live six-question chat and package estimates
+        run: |
+          python3 - <<'PY'
+          import json,time,urllib.request,urllib.error
+          base='https://mapleweb-ai-website.reasdfghkj.workers.dev'
+          def request(path,data=None):
+            headers={'User-Agent':'MapleWeb-Website-Pricing-Live-Check'}
+            if data is not None:headers['Content-Type']='application/json'
+            req=urllib.request.Request(base+path,data=json.dumps(data).encode() if data is not None else None,headers=headers)
+            try:
+              with urllib.request.urlopen(req,timeout=20) as r:
+                return r.status,r.read(200000).decode('utf-8','replace')
+            except urllib.error.HTTPError as e:
+              return e.code,e.read(200000).decode('utf-8','replace')
+          ready=False
+          for attempt in range(20):
+            status,script=request('/chat-experience.js')
+            sale_status,sale=request('/sales.html')
+            ready=(status==200 and sale_status==200 and
+               'function recommendPackage(a)' in script and
+               'Question 1 of 6' in sale and
+               "key:'budget'" not in script and "key:'budget'" not in sale and
+               'answers.budget' not in sale and
+               'function explainEstimate(p)' in sale)
+            print('New website-pricing code live check',attempt+1,'chat HTTP',status,'sales HTTP',sale_status,'ready',ready,flush=True)
+            if ready:break
+            if attempt<19:time.sleep(8)
+          if not ready:raise SystemExit('Budget-free pricing UI has NOT been verified on live website.')
+          status,hand=request('/customer-handoff.js')
+          assert status==200
+          assert "['business','goal','pages','features','style','timeline']" in hand
+          assert "'budget'" not in hand
+          status,home=request('/')
+          assert status==200 and 'See what your website could cost.' in home
+          status,planner=request('/build-with-ai.html')
+          assert status==200 and 'Your Vision. Your Website.' in planner
+          answers={'business':'Example restaurant','goal':'Get booking requests',
+                   'pages':'3–5 pages','features':'Online booking',
+                   'style':'Classic and elegant','timeline':'Flexible'}
+          status,chat=request('/api/chat',{'answers':answers})
+          assert status==200,'Backend chat is not available'
+          response=json.loads(chat)
+          assert response.get('completed') is True
+          assert response.get('next_key') is None
+          recommendation=response.get('recommendation') or {}
+          assert recommendation.get('id')=='booking'
+          assert recommendation.get('min')==3000 and recommendation.get('max')==4500
+          assert '$3,000' in response.get('reply','') and '$4,500' in response.get('reply','')
+          assert response.get('inquiry_submitted') is False
+          status,prices=request('/api/prices')
+          assert status==200 and len(json.loads(prices).get('prices',[]))==6
+          status,config=request('/api/config')
+          assert status==200
+          cfg=json.loads(config)
+          assert cfg.get('submissions_enabled') is False
+          assert cfg.get('builder_handoff_enabled') is False
+          assert cfg.get('ai_model_connected') is False
+          assert cfg.get('publishing_enabled') is False
+          status,manager=request('/api/manager/projects')
+          assert status==404
+          print('SUCCESS: Live Cloudflare price estimates use six questions, no budget prompt, and correct booking CAD pricing. Customer data submission remains OFF and no customer details were collected.')
+          PY
