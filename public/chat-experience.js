@@ -8,7 +8,6 @@
    {key:'goal',label:'Your main goal',question:'What would you like your new website to help you achieve?',choices:['Find more customers','Show my services','Get booking requests','Sell products']},
    {key:'pages',label:'Website pages',question:'How many pages would you like? You can also say you are not sure yet.',choices:['1–2 pages','3–5 pages','5–7 pages','Not sure yet']},
    {key:'features',label:'Features',question:'Which features are most important? For example a contact form, gallery, booking, or an online shop.',choices:['Contact form','Booking','Photo gallery','Online store','Not sure yet']},
-   {key:'budget',label:'Your budget',question:'What budget are you considering, in Canadian dollars? Our websites start at $500 CAD.',choices:['$500','$1,200','$2,000','$3,000','$4,500','Not sure yet']},
    {key:'style',label:'Look and feel',question:'What design style and colours would you like for your website?',choices:['Classic and elegant','Modern and minimal','Green and gold','Warm and welcoming']},
    {key:'timeline',label:'Your timeline',question:'Finally, when would you like your website to be ready?',choices:['As soon as possible','Within a month','1–3 months','Flexible']}
  ];
@@ -121,26 +120,35 @@
   const sequences=s.match(/(?:\d[ -]?){13,19}/g)||[];
   return sequences.some(function(x){const digits=x.replace(/\D/g,'');if(digits.length<13||digits.length>19)return false;let sum=0,alternate=false;for(let i=digits.length-1;i>=0;i--){let n=Number(digits[i]);if(alternate){n*=2;if(n>9)n-=9;}sum+=n;alternate=!alternate;}return sum%10===0;});
  }
- function priceReply(amount){
-  if(/not sure|don't know|unsure/i.test(amount))return 'No problem. We can help you find the right scope before giving a quote.';
-  const digits=amount.replace(/,/g,'').match(/(?:\$\s*)?\d+(?:\.\d+)?/);
-  const n=digits?Number(digits[0].replace('$','')):NaN;
-  if(!Number.isFinite(n)||n<=0)return 'Thanks. We can review your budget when we prepare your quote.';
-  if(n<500)return 'Our projects start at $500 CAD. We can discuss what might fit your budget.';
-  const bands=tiers.filter(function(t){return n>=t[1]&&n<=t[2];});
-  if(bands.length)return 'That budget can fit our '+bands.map(function(t){return t[0]+' ($'+t[1].toLocaleString('en-CA')+'–$'+t[2].toLocaleString('en-CA')+' CAD)';}).join(' or ')+'. The final scope and quote require review.';
-  if(n>7000)return 'For budgets over $7,000 CAD we would prepare a custom quote. No price is guaranteed.';
-  return 'Your amount sits between our published ranges. We can adjust the scope to suit it.';
+ function recommendPackage(a){
+  const features=String(a.features||'').toLowerCase();
+  const goal=String(a.goal||'').toLowerCase();
+  const pages=String(a.pages||'').toLowerCase();
+  const style=String(a.style||'').toLowerCase();
+  if(/online store|online shop|e.?commerce|shop|custom integrat/.test(features)||
+     /sell products|online store|e.?commerce/.test(goal))return tiers[5];
+  if(/book|payment|reservation/.test(features)||
+     /book|reservation/.test(goal))return tiers[4];
+  if(/custom premium|premium design|custom design/.test(style)||
+     /8\+|8 or more|more than 7/.test(pages))return tiers[3];
+  if(/5\s*[–-]\s*7/.test(pages))return tiers[2];
+  if(/3\s*[–-]\s*5/.test(pages))return tiers[1];
+  return tiers[0];
+ }
+ function estimateText(){
+  const p=recommendPackage(answers);
+  return 'Based on your website pages, features and design, the suggested package is '+
+   p[0]+' — $'+p[1].toLocaleString('en-CA')+'–$'+p[2].toLocaleString('en-CA')+
+   ' CAD. This is an estimate, not a guaranteed final quote. Applicable taxes and any extra services will be confirmed before work starts.';
  }
  function acknowledge(key,value){
   if(key==='business')return 'Thanks, I have noted your business: '+value+'.';
   if(key==='goal')return 'That sounds like a useful goal. I have added it to your plan.';
   if(key==='pages')return 'Great, '+value+' is noted. We can confirm the exact page count later.';
   if(key==='features')return /booking|payment|shop|store|commerce/i.test(value)?
-   'Those are useful features. Booking, payments, or stores can involve third-party services and additional costs, which we review before agreeing on a quote.':
-   'I have noted those features. We will review them together before finalizing the quote.';
-  if(key==='budget')return priceReply(value);
-  if(key==='style')return 'Perfect. Your preferred look and feel is noted.';
+   'Those are useful features. Booking, payments, or stores can involve third-party services and additional costs, which we review before agreeing on a quote.\n\n'+estimateText():
+   'I have noted those features. We will review them together before finalizing the quote.\n\n'+estimateText();
+  if(key==='style')return 'Your preferred design style is noted.\n\n'+estimateText();
   return 'Thanks. I have noted your preferred timeline; it is not a delivery guarantee.';
  }
  function detectQuestion(s){
@@ -148,7 +156,7 @@
   const q=/\?|^(what|who|how|where|why|can you|could you|do you|does|is there|tell me|show me|explain|help me|i have a question|hi|hello|hey)\b/.test(v);
   if(!q)return null;
   if(/(?:when\s+(?:do\s+)?(?:i|we)\s+pay|pay\s+after|upfront|deposit|pay\s+first|pay\s+before|payment\s+terms|pay\s+when\s+finished)/.test(v))return 'Our policy is pay after delivery — no deposit. You receive your completed, approved website first. After delivery is confirmed, we request the agreed final payment by invoice. We agree on scope, price, taxes and due date in writing before work starts. Live Stripe invoicing is not active yet.';
-  if(/(?:price|pricing|cost|how much|package|charge|afford|cheap)/.test(v))return "Our website packages are:\n\n"+prices+"\n\nThese are starting ranges, not guaranteed quotes.";
+  if(/(?:price|pricing|cost|how much|package|charge|afford|cheap)/.test(v))return answers.pages&&answers.features?estimateText():"Tell me the number of pages and features you need, and I will recommend a price range. Our six published packages are:\n\n"+prices+"\n\nThese are estimates, not guaranteed quotes.";
   if(/(?:example|portfolio|sample|preview|demo)/.test(v))return 'You can explore the three illustrative website concepts on our homepage. After completing your plan here, select “Preview sample website” to see a private fixed-template draft. These are examples, not past customer projects.';
   if(/(?:book|booking|online shop|store|e.?commerce|payment feature|checkout)/.test(v))return 'Yes, we can plan a website with bookings, payments, or a shop. These advanced features may involve third-party services, extra costs, and additional review before a quote.';
   if(/(?:timeline|how long|deliver|finish|ready|quick|fast)/.test(v))return 'A website timeline depends on its pages, features, design reviews, and approvals. We will agree on the scope and schedule before work starts.';
@@ -163,6 +171,7 @@
  function summary(){
   return 'MapleWeb AI — Your Website Plan\n\n'+
    topics.map(function(t){return t.label+': '+(answers[t.key]||'Not decided');}).join('\n')+
+   '\n\n'+estimateText()+'\n'+
    '\n\nPayment policy: No upfront deposit; pay after the finished website has been delivered and handover confirmed. Final price, taxes and due date are agreed in writing first.\n\n'+(submittedReference?'Saved for private Developer review. Reference: '+submittedReference+'. No accepted order or finished website.':'Planning summary only. Not submitted, not a confirmed quote, and not published.')+' Customer and owner approval required.';
  }
  function previewHTML(){
@@ -180,7 +189,7 @@
   setTimeout(function(){URL.revokeObjectURL(url);},1000);
  }
  function completed(){
-  addMessage('assistant','Your website plan is ready! Here is what I have recorded:\n\n'+summary()+'\n\nNothing has been submitted, saved, or published. You can copy the plan, save it, or preview a sample design.');
+  addMessage('assistant','Your website plan and suggested price are ready! Here is what I have recorded:\n\n'+summary()+'\n\nNothing has been submitted, saved, or published. You can copy the plan, save it, or preview a sample design.');
   const controls=document.createElement('div');controls.className='mw-chat-actions';
   function action(label,fn){const b=document.createElement('button');b.type='button';b.textContent=label;b.addEventListener('click',fn);controls.append(b);}
   action('Copy my plan',async function(){
