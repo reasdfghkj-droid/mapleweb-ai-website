@@ -3,7 +3,7 @@
  * Produces reviewable local HTML/CSS assets, never uploads or publishes them.
  * Advanced bookings, checkout and e-commerce are clearly placeholders.
  */
-const keys=['business','goal','pages','features','budget','style','timeline'];
+const keys=['business','goal','pages','features','style','timeline'];
 const txt=(v,max=200)=>typeof v==='string'?v.trim().slice(0,max):'';
 const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function clean(raw) {
