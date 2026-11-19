@@ -110,48 +110,6 @@ function makeDraft(a){const name=esc(a.business),goal=esc(a.goal),features=esc(a
 return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+
 '<meta http-equiv="Content-Security-Policy" content="default-src '+"'none'"+'; style-src '+"'unsafe-inline'"+'; base-uri '+"'none'"+'; form-action '+"'none'"+'">'+
 '<title>Draft for '+name+'</title><style>*{box-sizing:border-box}body{margin:0;font:16px/1.55 system-ui;background:#f4f8ff;color:#18304e}header,footer{padding:24px 7%;background:#09234a;color:white}main{max-width:900px;margin:auto;padding:55px 7%}h1{font-size:clamp(2.2rem,6vw,4rem);line-height:1.1}.tag{color:#176cae;font-weight:800;text-transform:uppercase;letter-spacing:.1em}section{background:#fff;padding:25px;border-radius:16px;margin:20px 0;box-shadow:0 4px 25px #1232}</style></head><body><header>'+name+' — sample concept</header><main><div class="tag">Website concept</div><h1>Welcome to '+name+'</h1><p>'+goal+'</p><section><h2>Services and features</h2><p>'+features+'</p></section><section><h2>Design style</h2><p>'+style+'</p></section><p>This is only a starting design. Pages, text, photos and pricing need approval.</p></main><footer>Private sample draft. Not a published website or a confirmed quote.</footer>
-<script>
-/* Accessible golden welcome. Runs once per browser tab; Replay is always available. */
-(function(){
- 'use strict';
- const layer=document.getElementById('mw-gold-intro');
- if(!layer)return;
- const skip=document.getElementById('mw-intro-skip');
- const key='mapleweb-golden-welcome-seen-v1';
- const reduced=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
- let playback=null,removal=null,active=false,previousFocus=null;
- function markSeen(){try{sessionStorage.setItem(key,'1')}catch(e){}}
- function done(){
-   if(!active)return;
-   active=false;markSeen();
-   if(playback){clearTimeout(playback);playback=null}
-   document.body.classList.remove('mw-gold-lock');
-   layer.classList.add('mw-leaving');
-   removal=setTimeout(function(){layer.hidden=true;layer.classList.remove('mw-leaving');if(previousFocus&&document.contains(previousFocus)){previousFocus.focus({preventScroll:true})}},620);
- }
- function start(){
-   if(removal){clearTimeout(removal);removal=null}
-   if(playback){clearTimeout(playback);playback=null}
-   previousFocus=document.activeElement;
-   active=true;layer.hidden=false;layer.classList.remove('mw-leaving');
-   document.body.classList.add('mw-gold-lock');
-   skip.focus({preventScroll:true});
-   playback=setTimeout(done,reduced?2400:5900);
- }
- skip.addEventListener('click',done);
- document.addEventListener('keydown',function(e){if(active&&e.key==='Escape'){e.preventDefault();done()}});
- const hero=document.querySelector('.hero .hero-grid > div:first-child');
- if(hero){
-   const replay=document.createElement('button');replay.type='button';replay.className='mw-replay';
-   replay.textContent='✦ Replay the golden welcome';replay.addEventListener('click',start);
-   const first=hero.querySelector('.cta');
-   if(first)first.before(replay);else hero.appendChild(replay);
- }
- let seen=false;try{seen=sessionStorage.getItem(key)==='1'}catch(e){}
- if(!seen&&!reduced)start();
-})();
-</script>
-
 </body></html>';
 }
 
@@ -212,4 +170,47 @@ start();
 })();
 
 </script>
+
+<script>
+/* Accessible golden welcome. Runs once per browser tab; Replay is always available. */
+(function(){
+ 'use strict';
+ const layer=document.getElementById('mw-gold-intro');
+ if(!layer)return;
+ const skip=document.getElementById('mw-intro-skip');
+ const key='mapleweb-golden-welcome-seen-v1';
+ const reduced=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+ let playback=null,removal=null,active=false,previousFocus=null;
+ function markSeen(){try{sessionStorage.setItem(key,'1')}catch(e){}}
+ function done(){
+   if(!active)return;
+   active=false;markSeen();
+   if(playback){clearTimeout(playback);playback=null}
+   document.body.classList.remove('mw-gold-lock');
+   layer.classList.add('mw-leaving');
+   removal=setTimeout(function(){layer.hidden=true;layer.classList.remove('mw-leaving');if(previousFocus&&document.contains(previousFocus)){previousFocus.focus({preventScroll:true})}},620);
+ }
+ function start(){
+   if(removal){clearTimeout(removal);removal=null}
+   if(playback){clearTimeout(playback);playback=null}
+   previousFocus=document.activeElement;
+   active=true;layer.hidden=false;layer.classList.remove('mw-leaving');
+   document.body.classList.add('mw-gold-lock');
+   skip.focus({preventScroll:true});
+   playback=setTimeout(done,reduced?2400:5900);
+ }
+ skip.addEventListener('click',done);
+ document.addEventListener('keydown',function(e){if(active&&e.key==='Escape'){e.preventDefault();done()}});
+ const hero=document.querySelector('.hero .hero-grid > div:first-child');
+ if(hero){
+   const replay=document.createElement('button');replay.type='button';replay.className='mw-replay';
+   replay.textContent='✦ Replay the golden welcome';replay.addEventListener('click',start);
+   const first=hero.querySelector('.cta');
+   if(first)first.before(replay);else hero.appendChild(replay);
+ }
+ let seen=false;try{seen=sessionStorage.getItem(key)==='1'}catch(e){}
+ if(!seen&&!reduced)start();
+})();
+</script>
+
 </body></html>
