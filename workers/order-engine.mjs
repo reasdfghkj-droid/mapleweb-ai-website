@@ -10,7 +10,8 @@ const transitions = Object.freeze({
   BUILDING:['ACCEPTED'],
   PREVIEW_READY:['BUILDING'],
   DELIVERED:['PREVIEW_READY'],
-  CANCELLED:['NEW','REVIEWING','QUOTED','ACCEPTED','BUILDING','PREVIEW_READY']
+  CANCELLED:['NEW','REVIEWING','QUOTED','ACCEPTED','BUILDING','PREVIEW_READY'],
+  REVISE:['BUILDING','PREVIEW_READY']
 });
 const dataText = (s,n=250) => typeof s==='string'?s.trim().slice(0,n):'';
 export function validId(s) { return typeof s==='string' && UUID.test(s); }
@@ -78,8 +79,29 @@ export function planOwnerTransition(row, requested, data={}, now=new Date().toIS
   if (!transitions[requested].includes(row.status)) return bad('Action is not allowed from this project stage');
   if (row.stripe_invoice_id || row.invoice_status) return bad('Billing has already started; project cannot change stages');
   const p = data && typeof data==='object'&&!Array.isArray(data) ? data : {};
-  const fields={status:requested,updated_at:now};
+  const fields={status:requested==='REVISE'?'REVIEWING':requested,updated_at:now};
   let event='STATUS_'+requested;
+  if(requested==='REVISE'){
+    const evidence=cleanEvidence(p.revisionEvidenceReference);
+    if(!evidence)return bad('Recorded customer revision request is required');
+    fields.current_version=row.current_version+1;
+    fields.revision_evidence_reference=evidence;
+    fields.quote_approved_version=null;
+    fields.customer_approved_version=null;
+    fields.owner_approved_version=null;
+    fields.preview_verified=0;
+    fields.security_check_passed=0;
+    fields.quote_accepted_at=null;
+    fields.quote_acceptance_evidence_reference=null;
+    fields.quote_evidence_reference=null;
+    fields.approved_final_total_cad_cents=null;
+    fields.owner_approved_invoice_total_cad_cents=null;
+    fields.invoice_due_terms_accepted=0;
+    fields.invoice_due_days=null;
+    fields.owner_approved_invoice=0;
+    fields.outstanding_revisions=0;
+    event='CUSTOMER_REVISION_REQUESTED';
+  }
   if(requested==='QUOTED'){
     if(!positiveCents(p.approvedFinalTotalCadCents)) return bad('A specific owner-approved final CAD price is required');
     if(!integerDue(p.invoiceDueDays)) return bad('Written invoice due terms (1–60 days) required');
@@ -154,7 +176,7 @@ export async function commitOwnerTransition(db, row, requested, input) {
   const res=await db.batch([stmt,audit]);
   if(!Array.isArray(res)||res[0]?.meta?.changes!==1 || res[1]?.meta?.changes!==1)
     return bad('Concurrent change or storage error; review current project before retrying');
-  return {ok:true,status:requested,version:row.row_version+1};
+  return {ok:true,status:plan.fields.status,version:row.row_version+1};
 }
 
 /** AI-generated versions are private and invalidate existing approvals. */
