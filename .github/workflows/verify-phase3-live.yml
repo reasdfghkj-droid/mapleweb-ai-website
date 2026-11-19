@@ -1,0 +1,57 @@
+name: Verify MapleWeb Phase 3 safely live
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'workers/**'
+      - 'wrangler.jsonc'
+      - '.github/workflows/verify-phase3-live.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify new Phase 3 code and safe restrictions on actual Cloudflare
+        run: |
+          python3 - <<'PY'
+          import json,time,urllib.request,urllib.error
+          base='https://mapleweb-ai-website.reasdfghkj.workers.dev'
+          def get(path):
+            req=urllib.request.Request(base+path,headers={'User-Agent':'MapleWeb-Phase3-Release-Check'})
+            try:
+              with urllib.request.urlopen(req,timeout=20) as r:
+                return r.status,r.read(150000).decode('utf-8','replace')
+            except urllib.error.HTTPError as e:
+              return e.code,e.read(150000).decode('utf-8','replace')
+          ready=False
+          for attempt in range(18):
+            status,body=get('/health')
+            try: data=json.loads(body)
+            except: data={}
+            ready=(status==200 and data.get('private_preview_feature_present') is True
+              and data.get('private_preview_sharing_enabled') is False
+              and data.get('owner_notifications_external_email_enabled') is False)
+            print('Phase 3 live code check',attempt+1,'HTTP',status,'new_code',ready,flush=True)
+            if ready:break
+            if attempt<17:time.sleep(8)
+          if not ready:raise SystemExit('New Phase 3 code not confirmed live')
+          status,preview=get('/preview/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA')
+          assert status==404,'Unapproved private preview endpoint MUST remain inaccessible'
+          status,config=get('/api/config')
+          assert status==200
+          cfg=json.loads(config)
+          assert cfg.get('submissions_enabled') is False
+          assert cfg.get('publishing_enabled') is False
+          assert cfg.get('ai_model_connected') is False
+          status,manager=get('/api/manager/projects')
+          assert status==404,'Public Manager access must remain inaccessible'
+          status,home=get('/')
+          assert status==200 and 'No upfront deposit' in home
+          status,sales=get('/sales.html')
+          assert status==200 and 'No upfront deposit' in sales
+          status,prices=get('/api/prices')
+          assert status==200 and len(json.loads(prices)['prices'])==6
+          print('SUCCESS Phase 3 code verified LIVE; protected preview disabled, customer intake disabled, private Manager isolated, 6 approved CAD prices unchanged')
+          PY
