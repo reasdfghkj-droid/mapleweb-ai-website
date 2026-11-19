@@ -7,7 +7,7 @@
  * or customer approval implied by a successful handoff.
  */
 import { buildWebsiteStarterBundle } from './site-bundle.mjs';
-import { notificationInsert } from './owner-inbox.mjs';
+
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 function idOk(id){return typeof id==='string'&&UUID.test(id)}
@@ -64,7 +64,11 @@ export async function processDeveloperJob(db,projectId,env={}) {
         "SELECT ?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM developer_build_jobs WHERE project_id=? AND status='STARTER_READY')"
       ).bind(crypto.randomUUID(),projectId,now,'PRIVATE_STARTER_PREPARED','developer',
         '{"generated_by":"fixed-template","published":false}',projectId),
-      notificationInsert(db,projectId,'READY_FOR_REVIEW',now)
+      db.prepare(
+        "INSERT INTO owner_notifications(id,project_id,category,created_at) "+
+        "SELECT ?,?,?,? WHERE EXISTS "+
+        "(SELECT 1 FROM developer_build_jobs WHERE project_id=? AND status='STARTER_READY')"
+      ).bind(crypto.randomUUID(),projectId,'READY_FOR_REVIEW',now,projectId)
     ];
     const recorded=await db.batch(statements);
     if(recorded?.length!==3||recorded.some(x=>x?.meta?.changes!==1))
