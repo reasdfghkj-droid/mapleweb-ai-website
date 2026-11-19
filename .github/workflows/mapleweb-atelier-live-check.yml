@@ -1,0 +1,61 @@
+name: Verify classic MapleWeb live deployment
+on:
+  push:
+    branches: [mapleweb-ai-agents]
+    paths: [.github/workflows/mapleweb-atelier-live-check.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  live-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Verify public Cloudflare website, theme assets, and safe Developer API
+        run: |
+          python3 - <<'PY'
+          import json,time,urllib.request,urllib.error
+          base='https://mapleweb-ai-website.reasdfghkj.workers.dev'
+          def get(path,method='GET',payload=None):
+            data=None if payload is None else json.dumps(payload).encode('utf8')
+            h={'User-Agent':'MapleWeb-Atelier-Live-Verification/1.0'}
+            if data is not None:h['Content-Type']='application/json'
+            req=urllib.request.Request(base+path,data=data,headers=h,method=method)
+            try:
+              with urllib.request.urlopen(req,timeout=20) as resp:
+                return resp.status,resp.read(700000).decode('utf8','replace')
+            except urllib.error.HTTPError as e:return e.code,e.read(700000).decode('utf8','replace')
+          markers=['class="mw-classic"','id="mw-gold-intro"','mw-quality-strip','id="examples"','id="faq"','/atelier.css','/planner-enhancements.js','$4,500–$7,000']
+          for n in range(12):
+            status,page=get('/')
+            good=status==200 and all(s in page for s in markers)
+            print('Check',n+1,'HTTP',status,'classic release visible',good)
+            if good:break
+            if n==11:raise SystemExit('FAIL: classic homepage not yet visible on Cloudflare')
+            time.sleep(10)
+          status,style=get('/atelier.css')
+          assert status==200 and 'MapleWeb Atelier' in style and 'mw-progress' in style, 'Missing classic CSS asset'
+          print('PASS classic theme asset')
+          status,script=get('/planner-enhancements.js')
+          assert status==200 and 'MutationObserver' in script and "'$1,200'" in script, 'Missing guided chat enhancement asset'
+          print('PASS progress and quick reply script')
+          status,chat=get('/build-with-ai.html')
+          assert status==200 and 'mw-planner-page' in chat and 'id="chat-form"' in chat and '/atelier.css' in chat,'Missing classic planning chat'
+          print('PASS classic planning page')
+          status,raw=get('/api/config')
+          flags=json.loads(raw)
+          assert status==200 and flags.get('submissions_enabled') is False and flags.get('publishing_enabled') is False, 'Unsafe submission configuration'
+          print('PASS customer submissions and auto publishing remain disabled')
+          status,raw=get('/api/prices')
+          prices=json.loads(raw)
+          assert status==200 and len(prices.get('prices',[]))==6,'Prices API missing'
+          print('PASS six approved CAD prices')
+          status,raw=get('/api/draft','POST',{'answers':{'business':'Synthetic example only','goal':'Preview example'}})
+          draft=json.loads(raw)
+          assert status==200 and draft.get('draft_only') is True and draft.get('published') is False
+          print('PASS sample drafts never publish')
+          status,_=get('/api/manager/status')
+          assert status==404,'Manager API exposed publicly'
+          print('PASS private manager route isolated')
+          print('SUCCESS premium classic MapleWeb site, assets, chat and API live and verified')
+          PY
