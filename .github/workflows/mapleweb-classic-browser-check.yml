@@ -45,7 +45,7 @@ jobs:
           assert.equal(await page.locator('.mw-faq details').count(),4);
           assert.equal(await page.locator('.price').count(),6);
           assert.equal(await page.locator('.mw-progress').count(),1);
-          assert.equal(await page.locator('.mw-progress progress').inputValue(),'0');
+          assert.equal(await page.locator('.mw-progress progress').evaluate(el=>String(el.value)),'0');
           const family=await page.locator('h1').evaluate(el=>getComputedStyle(el).fontFamily);
           assert.ok(/Georgia|Times New Roman|serif/i.test(family),family);
           const css=await page.request.get(base+'atelier.css');assert.equal(css.status(),200);
@@ -54,11 +54,11 @@ jobs:
             await page.locator('#answer').fill(answer);
             await page.locator('#send').click();
           }
-          assert.equal(await page.locator('.mw-progress progress').inputValue(),'2');
+          assert.equal(await page.locator('.mw-progress progress').evaluate(el=>String(el.value)),'2');
           for(const option of ['3–5 pages','Booking','$1,200','Classic and elegant','Within a month']){
             await page.getByRole('button',{name:option,exact:true}).click();
           }
-          assert.equal(await page.locator('.mw-progress progress').inputValue(),'7');
+          assert.equal(await page.locator('.mw-progress progress').evaluate(el=>String(el.value)),'7');
           assert.ok(await page.locator('#answer').isDisabled());
           await page.getByRole('button',{name:'Preview a sample website'}).click();
           assert.equal(await page.locator('iframe[title="Sample website draft preview"]').count(),1);
