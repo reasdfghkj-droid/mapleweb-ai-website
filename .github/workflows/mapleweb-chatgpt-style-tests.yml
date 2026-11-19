@@ -1,0 +1,113 @@
+name: MapleWeb conversation studio end-to-end browser tests
+on:
+  push:
+    branches: [mapleweb-ai-agents]
+    paths:
+      - .github/workflows/mapleweb-chatgpt-style-tests.yml
+      - public/chat-experience.js
+      - public/chat-experience.css
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate JavaScript and existing backend safety tests
+        run: |
+          node --check public/chat-experience.js
+          npm test
+      - name: Install browser
+        run: |
+          npm install --no-save --no-audit --no-fund playwright
+          npx playwright install --with-deps chromium
+      - name: Start private preview server
+        run: |
+          mkdir -p browser-artifacts
+          python3 -m http.server 8765 --bind 127.0.0.1 --directory public >/tmp/maple-chat-web.log 2>&1 &
+          sleep 2
+      - name: Test conversational pricing, free text, mobile chat, privacy and previews
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {chromium} from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const base='http://127.0.0.1:8765/';
+          const phone=await browser.newPage({viewport:{width:375,height:750},reducedMotion:'no-preference'});
+          const errors=[];const submissions=[];
+          phone.on('pageerror',e=>errors.push(e.message));
+          phone.on('request',r=>{if(r.url().includes('/api/submit'))submissions.push(r.url());});
+          await phone.goto(base,{waitUntil:'networkidle'});
+          await phone.locator('#mw-gold-intro').waitFor({state:'visible',timeout:5000});
+          await phone.locator('#mw-intro-skip').click();
+          await phone.locator('#mw-gold-intro').waitFor({state:'hidden',timeout:5000});
+          await phone.locator('.mw-conversation').waitFor();
+          assert.equal(await phone.locator('.price').count(),6);
+          assert.equal(await phone.locator('.mw-example').count(),3);
+          assert.equal(await phone.locator('.mw-faq details').count(),4);
+          assert.equal(await phone.locator('.mw-chat-message.mw-assistant').count()>=2,true);
+          assert.equal(await phone.locator('#answer').evaluate(e=>e.tagName),'TEXTAREA');
+          assert.equal(await phone.locator('.mw-chat-side').isVisible(),false);
+          // Ask a side question without consuming the current business question.
+          await phone.getByRole('button',{name:'How much does a website cost?'}).click();
+          await phone.getByText('Our website packages are:',{exact:false}).waitFor({timeout:4000});
+          assert.equal(await phone.locator('.mw-chat-steps .is-complete').count(),0);
+          assert.equal(await phone.getByText('Our website packages are:',{exact:false}).count(),1);
+          // Check chat-style keyboard interaction.
+          await phone.locator('#answer').fill('Coffee shop');
+          await phone.locator('#answer').press('Enter');
+          await phone.getByRole('button',{name:'Find more customers'}).waitFor({timeout:4000});
+          assert.equal(await phone.locator('.mw-chat-steps .is-complete').count(),1);
+          for(const option of ['Find more customers','3–5 pages','Booking','$1,200','Classic and elegant','Within a month']){
+            await phone.getByRole('button',{name:option,exact:true}).click();
+            await phone.locator('.mw-chat-steps .is-complete').count();
+            await phone.waitForTimeout(220);
+          }
+          await phone.getByRole('button',{name:'Preview sample website'}).waitFor({timeout:4000});
+          assert.equal(await phone.locator('.mw-chat-steps .is-complete').count(),7);
+          await phone.getByRole('button',{name:'Preview sample website'}).click();
+          assert.equal(await phone.locator('iframe[title="Private sample website draft"]').count(),1);
+          assert.equal(await phone.locator('iframe[title="Private sample website draft"]').getAttribute('sandbox'),'');
+          assert.equal(await phone.locator('.mw-chat-actions').count()>=2,true);
+          await phone.screenshot({path:'browser-artifacts/conversation-mobile.png',fullPage:true});
+          assert.equal(await phone.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),true);
+          assert.deepEqual(submissions,[]);
+          await phone.locator('#restart').click();
+          assert.equal(await phone.locator('.mw-chat-steps .is-complete').count(),0);
+          await phone.locator('#answer').fill('My API key: abc-secret');
+          await phone.locator('#send').click();
+          await phone.getByText('For your privacy, please do not share passwords',{exact:false}).waitFor();
+          assert.equal(await phone.locator('.mw-chat-steps .is-complete').count(),0);
+          const desktop=await browser.newPage({viewport:{width:1440,height:900},reducedMotion:'reduce'});
+          desktop.on('pageerror',e=>errors.push(e.message));
+          await desktop.goto(base,{waitUntil:'networkidle'});
+          assert.equal(await desktop.locator('.mw-conversation').count(),1);
+          assert.equal(await desktop.locator('.mw-chat-side').isVisible(),true);
+          await desktop.screenshot({path:'browser-artifacts/conversation-desktop.png',fullPage:true});
+          await desktop.goto(base+'build-with-ai.html',{waitUntil:'networkidle'});
+          assert.equal(await desktop.locator('.mw-conversation').count(),1);
+          assert.equal(await desktop.locator('#answer').evaluate(e=>e.tagName),'TEXTAREA');
+          await desktop.getByRole('button',{name:'Can you build a restaurant website?'}).click();
+          await desktop.getByText('We can help plan a professional website',{exact:false}).waitFor({timeout:4000});
+          await desktop.screenshot({path:'browser-artifacts/conversation-planner.png',fullPage:true});
+          for(const width of [320,375,768,1440]){
+            await desktop.setViewportSize({width,height:850});
+            await desktop.goto(base+'build-with-ai.html',{waitUntil:'networkidle'});
+            assert.equal(await desktop.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),true,'Horizontal overflow at '+width);
+          }
+          assert.deepEqual(errors,[]);
+          console.log('PASS: conversation layout, free-form pricing help, seven-step plan, keyboard, quick replies, safe sample preview, new chat, input safety, responsive design');
+          await browser.close();
+          JS
+      - name: Save preview screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mapleweb-conversation-studio-screenshots
+          path: browser-artifacts/
+          retention-days: 7
