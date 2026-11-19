@@ -1,0 +1,93 @@
+name: MapleWeb classic design and guided chat browser test
+on:
+  push:
+    branches: [mapleweb-ai-agents]
+    paths: [.github/workflows/mapleweb-classic-browser-check.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify source and backend rules
+        run: npm test
+      - name: Install headless browser
+        run: |
+          npm install --no-save --no-audit --no-fund playwright
+          npx playwright install --with-deps chromium
+      - name: Start local preview
+        run: |
+          mkdir -p browser-artifacts
+          python3 -m http.server 8765 --bind 127.0.0.1 --directory public >/tmp/maple-classic-http.log 2>&1 &
+          sleep 2
+      - name: Verify premium design, mobile layout, and full guided chat
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {chromium} from 'playwright';
+          const browser=await chromium.launch({headless:true});
+          const base='http://127.0.0.1:8765/';
+          const page=await browser.newPage({viewport:{width:375,height:750},reducedMotion:'no-preference'});
+          const errors=[];
+          page.on('pageerror',err=>errors.push(err.message));
+          await page.goto(base,{waitUntil:'networkidle'});
+          await page.locator('#mw-gold-intro').waitFor({state:'visible',timeout:5000});
+          await page.locator('#mw-intro-skip').click();
+          await page.locator('#mw-gold-intro').waitFor({state:'hidden',timeout:4000});
+          assert.equal(await page.locator('.mw-quality-strip').count(),1);
+          assert.equal(await page.locator('.mw-example').count(),3);
+          assert.equal(await page.locator('.mw-faq details').count(),4);
+          assert.equal(await page.locator('.price').count(),6);
+          assert.equal(await page.locator('.mw-progress').count(),1);
+          assert.equal(await page.locator('.mw-progress progress').inputValue(),'0');
+          const family=await page.locator('h1').evaluate(el=>getComputedStyle(el).fontFamily);
+          assert.ok(/Georgia|Times New Roman|serif/i.test(family),family);
+          const css=await page.request.get(base+'atelier.css');assert.equal(css.status(),200);
+          const script=await page.request.get(base+'planner-enhancements.js');assert.equal(script.status(),200);
+          for(const answer of ['Coffee shop','More local customers']){
+            await page.locator('#answer').fill(answer);
+            await page.locator('#send').click();
+          }
+          assert.equal(await page.locator('.mw-progress progress').inputValue(),'2');
+          for(const option of ['3–5 pages','Booking','$1,200','Classic and elegant','Within a month']){
+            await page.getByRole('button',{name:option,exact:true}).click();
+          }
+          assert.equal(await page.locator('.mw-progress progress').inputValue(),'7');
+          assert.ok(await page.locator('#answer').isDisabled());
+          await page.getByRole('button',{name:'Preview a sample website'}).click();
+          assert.equal(await page.locator('iframe[title="Sample website draft preview"]').count(),1);
+          assert.ok((await page.locator('#log').innerText()).includes('simple 3–5 page range'));
+          assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),true);
+          await page.screenshot({path:'browser-artifacts/classic-home-mobile.png',fullPage:true});
+          const desktop=await browser.newPage({viewport:{width:1440,height:900},reducedMotion:'reduce'});
+          desktop.on('pageerror',err=>errors.push(err.message));
+          await desktop.goto(base,{waitUntil:'networkidle'});
+          assert.equal(await desktop.locator('.mw-quality-strip').count(),1);
+          await desktop.screenshot({path:'browser-artifacts/classic-home-desktop.png',fullPage:true});
+          await desktop.goto(base+'build-with-ai.html',{waitUntil:'networkidle'});
+          assert.equal(await desktop.locator('.mw-progress').count(),1);
+          assert.equal(await desktop.locator('.price').count(),6);
+          assert.equal(await desktop.locator('#chat-form').count(),1);
+          await desktop.screenshot({path:'browser-artifacts/classic-planner.png',fullPage:true});
+          for(const w of [320,375,768,1440]){
+            await desktop.setViewportSize({width:w,height:800});
+            await desktop.goto(base+'build-with-ai.html',{waitUntil:'networkidle'});
+            assert.equal(await desktop.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),true,'Planner horizontal overflow at '+w);
+          }
+          assert.deepEqual(errors,[]);
+          console.log('PASS classic emerald/gold theme, golden intro, prices, FAQ, quick replies, 7-step guided planning, sample draft, 320px/375px/768px/1440px mobile checks');
+          await browser.close();
+          JS
+      - name: Upload screenshots from testing
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mapleweb-classic-browser-screenshots
+          path: browser-artifacts/
+          retention-days: 7
