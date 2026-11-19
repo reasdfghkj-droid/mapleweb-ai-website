@@ -1,0 +1,55 @@
+name: MapleWeb Phase 2 automation checks
+on:
+  push:
+    branches: [main, mapleweb-automation-phase2-2026-11-19]
+    paths:
+      - 'workers/**'
+      - 'billing/**'
+      - 'migrations/**'
+      - 'manager-ui/**'
+      - 'tests/**'
+      - 'wrangler.manager.jsonc'
+      - '.github/workflows/automation-phase2.yml'
+  pull_request:
+    paths:
+      - 'workers/**'
+      - 'billing/**'
+      - 'migrations/**'
+      - 'manager-ui/**'
+      - 'tests/**'
+      - 'wrangler.manager.jsonc'
+      - '.github/workflows/automation-phase2.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run existing sales and payment-gate tests
+        run: |
+          node tests/sales-studio.test.mjs
+          node tests/post-delivery.test.mjs
+      - name: Run Phase 2 automatic-order, AI and Stripe security tests
+        run: node tests/automation-phase2.test.mjs
+      - name: Validate D1 migrations in real SQLite
+        run: |
+          python3 - <<'PY'
+          import sqlite3,pathlib
+          db=sqlite3.connect(':memory:')
+          db.execute('PRAGMA foreign_keys=ON')
+          for path in ['migrations/0001_secure_sales_submissions.sql','migrations/0002_orders_projects_and_billing.sql']:
+              db.executescript(pathlib.Path(path).read_text())
+              print('PASS',path)
+          tables={t[0] for t in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+          assert {'submissions','submission_rate_limits','projects','project_events','stripe_webhook_events','invoice_operations'}.issubset(tables)
+          print('PASS D1 schema and foreign-key indexes')
+          PY
+      - name: Validate public and private Worker builds (no deployment)
+        run: |
+          npm install --no-audit --no-fund
+          npx wrangler deploy --dry-run --outdir ./dist/public --config wrangler.jsonc
+          npx wrangler deploy --dry-run --outdir ./dist/private --config wrangler.manager.jsonc

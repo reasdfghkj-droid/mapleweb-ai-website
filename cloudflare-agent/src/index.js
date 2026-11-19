@@ -1,10 +1,10 @@
 // MapleWeb Publishing Agent — Cloudflare Worker
 // This is a rules-based monitoring agent, not a paid AI model.
 // GET /status runs a live check; Cloudflare cron checks once an hour.
-const REPO = "elhamkamgar93-png/mapleweb-ai-website";
+const REPO = "reasdfghkj-droid/mapleweb-ai-website";
 const URLS = [
-  "https://mapleweb-ai.elhamkamgar93.workers.dev",
-  "https://mapleweb-ai.pages.dev"
+  "https://mapleweb-ai-website.reasdfghkj.workers.dev/",
+  "https://mapleweb-ai-website.reasdfghkj.workers.dev/sales.html"
 ];
 async function check(env) {
   const headers = { "User-Agent": "mapleweb-publishing-agent", Accept: "application/vnd.github+json" };
