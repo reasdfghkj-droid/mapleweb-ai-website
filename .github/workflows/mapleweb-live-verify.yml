@@ -43,7 +43,7 @@ jobs:
             print(('PASS' if found else 'FAIL')+': '+value)
             ok &= found
           try:
-            with urllib.request.urlopen(url+'build-with-ai.html',timeout=20) as r:
+            with urllib.request.urlopen(urllib.request.Request(url+'build-with-ai.html',headers={'User-Agent':'MapleWeb-release-check/1.0'}),timeout=20) as r:
               planner=r.read(250000).decode('utf8','replace')
               print(('PASS' if r.status==200 and 'Preview a sample website' in planner else 'FAIL')+': planning chat')
               ok &= r.status==200 and 'Preview a sample website' in planner
