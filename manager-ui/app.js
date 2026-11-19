@@ -102,6 +102,7 @@ $('record').addEventListener('click',async()=>{
     body.quoteEvidenceReference=$('quoteEvidence').value.trim();
   }
   if(action==='ACCEPTED')body.customerQuoteAcceptanceReference=$('acceptedEvidence').value.trim();
+  if(action==='REVISE')body.revisionEvidenceReference=$('revisionEvidence').value.trim();
   if(action==='PREVIEW_READY'){
     body.previewVerified=$('previewCheck').checked;body.securityCheckPassed=$('securityCheck').checked;
   }
