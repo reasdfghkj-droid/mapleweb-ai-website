@@ -41,8 +41,8 @@ The GitHub publishing workflow is still blocked by missing deployment secrets, b
 6. Only after security review and full end-to-end tests, set \`SUBMISSIONS_APPROVED=true\`. Test that an explicitly consented request is saved in D1 and is visible to the authorized Manager; test failure paths and deletion.
 7. Connect a verified owner inbox/notification pipeline and Website Developer intake processor separately. Only then can the product claim automatic delivery, agent handoff, or follow-up.
 
-## Payments and confirmed sales (Phase 2; not implemented)
-To accept deposits or online payments, first connect an owner-controlled payment account (for example, Stripe), configure a server-side hosted checkout and verified webhook, define taxes/refunds/cancellation policy, and reconcile payment status before creating an order. **Never accept raw card numbers** or assume a customer is paid based on their redirect to a success URL. The owner must approve price, scope and checkout activation. Websites built for customers still require customer/owner approval before publication.
+## Payments and confirmed sales — pay only after delivery (Phase 2; not implemented)
+**Owner-selected model:** No deposit and no payment before delivery. The customer must first receive the completed approved website and confirm handover. Then the owner reviews the final amount and sends the invoice using Stripe Invoicing. The project price, applicable taxes, included services, due date and acceptance criteria must be agreed in writing before work begins. No Stripe invoice is sent automatically or in live mode yet. Do **not** accept raw card numbers, assume payment from a success URL, or issue an invoice before delivery. The Stripe sandbox is connected, but real billing and verified webhook integration remain disabled. See `POST_DELIVERY_PAYMENTS.md` and `billing/post-delivery-gate.mjs` for the tested owner-approval gate.
 
 ## Developer validation
 Run \`node tests/sales-studio.test.mjs\` to check syntax, all six tiers, recommendation scenarios, and fail-closed intake signals. The branch includes a sales-specific workflow with no deployment or paid services.

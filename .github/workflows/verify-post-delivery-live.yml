@@ -1,0 +1,51 @@
+name: Verify pay-after-delivery policy live
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'public/index.html'
+      - 'public/sales.html'
+      - 'public/build-with-ai.html'
+      - 'public/chat-experience.js'
+      - '.github/workflows/verify-post-delivery-live.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-live:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify payment-after-delivery wording on live Cloudflare
+        run: |
+          python3 - <<'PY'
+          import json,time,urllib.request,urllib.error
+          base='https://mapleweb-ai-website.reasdfghkj.workers.dev'
+          def get(path):
+            request=urllib.request.Request(base+path,headers={'User-Agent':'MapleWeb-PostDelivery-Verify/1.0'})
+            try:
+              with urllib.request.urlopen(request,timeout=18) as response:
+                return response.status,response.read(160000).decode('utf8','replace')
+            except urllib.error.HTTPError as e:
+              return e.code,e.read(160000).decode('utf8','replace')
+          passed=False
+          for attempt in range(18):
+            status,home=get('/')
+            passed=status==200 and all(w in home for w in ('No upfront deposit','5. Receive your finished website','6. Pay after delivery','When do I pay for my website?'))
+            print('Live pay-after-delivery home check',attempt+1,'HTTP',status,'ready',passed,flush=True)
+            if passed:break
+            if attempt<17:time.sleep(8)
+          if not passed:raise SystemExit('New payment policy not verified on live Cloudflare homepage.')
+          status,sales=get('/sales.html')
+          assert status==200 and 'No upfront deposit: pay only after receiving your finished website' in sales
+          assert 'The agreed invoice is requested after the approved finished website is delivered' in sales
+          status,planner=get('/build-with-ai.html')
+          assert status==200 and 'No upfront deposit' in planner
+          status,chat=get('/chat-experience.js')
+          assert status==200 and 'Our policy is pay after delivery' in chat
+          status,config=get('/api/config')
+          assert status==200
+          cfg=json.loads(config)
+          assert cfg.get('submissions_enabled') is False,'Secure submissions must remain disabled until approved'
+          assert cfg.get('ai_model_connected') is False,'Do not claim connected generative model'
+          print('SUCCESS verified public website, sales page, planning page, chat and disabled intake. No charges or invoices were created.')
+          PY

@@ -1,0 +1,35 @@
+name: Validate pay-after-delivery policy
+on:
+  push:
+    branches: [main, mapleweb-pay-after-delivery-2026-11-19]
+    paths:
+      - 'public/**'
+      - 'index.html'
+      - 'sales.html'
+      - 'chat-experience.js'
+      - 'billing/**'
+      - 'tests/post-delivery.test.mjs'
+      - '.github/workflows/post-delivery-tests.yml'
+  pull_request:
+    paths:
+      - 'public/**'
+      - 'index.html'
+      - 'sales.html'
+      - 'chat-experience.js'
+      - 'billing/**'
+      - 'tests/post-delivery.test.mjs'
+      - '.github/workflows/post-delivery-tests.yml'
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test post-delivery invoice eligibility and payment wording
+        run: node tests/post-delivery.test.mjs
+      - name: Test existing sales price recommendations
+        run: node tests/sales-studio.test.mjs
