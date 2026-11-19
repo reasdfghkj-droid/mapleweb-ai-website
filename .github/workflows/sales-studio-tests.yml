@@ -1,7 +1,7 @@
 name: MapleWeb sales studio tests
 on:
   push:
-    branches: [mapleweb-sales-system-2026-11-19]
+    branches: [main, mapleweb-sales-system-2026-11-19]
     paths:
       - 'public/**'
       - 'tests/sales-studio.test.mjs'
