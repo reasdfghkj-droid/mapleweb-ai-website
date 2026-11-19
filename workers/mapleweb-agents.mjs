@@ -245,7 +245,7 @@ export default {
       return json({ error: 'Website assets not configured' }, 503);
     }
     if (url.pathname.startsWith('/preview/')) return servePrivatePreview(req,env);
-    if (req.method === 'GET' && url.pathname === '/health') return json({ status: 'ok', service: 'MapleWeb AI development agents', manager_enabled: Boolean(env.MANAGER_TOKEN), secure_submissions_enabled: submissionsEnabled(env), ai_model_connected: false });
+    if (req.method === 'GET' && url.pathname === '/health') return json({ status: 'ok', service: 'MapleWeb AI development agents', manager_enabled: Boolean(env.MANAGER_TOKEN), secure_submissions_enabled: submissionsEnabled(env), ai_model_connected: false, private_preview_feature_present: true, private_preview_sharing_enabled: env.PRIVATE_PREVIEWS_APPROVED === 'true' && Boolean(env.DB), owner_notifications_external_email_enabled: false });
     if (req.method === 'GET' && url.pathname === '/api/prices') return json({ currency: 'CAD', prices: PRICES });
     if (req.method === 'GET' && url.pathname === '/api/config') {
       const publicKey = txt(env.TURNSTILE_SITE_KEY, 300);
