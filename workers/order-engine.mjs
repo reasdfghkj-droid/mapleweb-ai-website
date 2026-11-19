@@ -138,7 +138,7 @@ const SAFE_COLUMNS = new Set([
   'owner_approved_invoice_total_cad_cents','quote_accepted_at','delivered_at',
   'delivery_confirmed_at','delivery_evidence_reference','quote_evidence_reference',
   'quote_acceptance_evidence_reference',
-  'customer_approval_evidence_reference','invoice_due_days','invoice_due_terms_accepted',
+  'customer_approval_evidence_reference','customer_receipt_evidence_reference','revision_evidence_reference','current_version','invoice_due_days','invoice_due_terms_accepted',
   'owner_approved_invoice'
 ]);
 export async function commitOwnerTransition(db, row, requested, input) {
