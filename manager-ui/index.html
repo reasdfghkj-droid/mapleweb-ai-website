@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta name="referrer" content="no-referrer">
+<title>MapleWeb AI — Private Manager</title>
+<link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
+<body><header><div class="wrap top"><strong>✦ MapleWeb <span>AI</span> / Manager</strong><small>Private owner-only workspace · Not customer-facing</small></div></header>
+<main class="wrap">
+<section class="intro"><div class="eyebrow">Headquarters</div><h1>Manage your website projects.</h1><p>Review customer requests, inspect private drafts, record approvals and prepare post-delivery invoicing. This page must be protected by Cloudflare Access before activation.</p></section>
+<section class="panel"><h2>Secure connection</h2>
+<div class="formline"><label for="token">Manager access token <span class="muted">(held only in this tab's memory; never saved)</span></label>
+<input id="token" type="password" autocomplete="off" spellcheck="false" placeholder="Enter your private Manager token"></div>
+<button id="connect" type="button" class="primary">Connect to Manager</button>
+<button id="disconnect" type="button" class="secondary" disabled>Disconnect</button><p id="status" role="status" aria-live="polite">No private data has been loaded.</p></section>
+<div id="workspace" hidden>
+<section class="layout"><div class="panel"><div class="line"><h2>Customer projects</h2><button type="button" id="refresh" class="secondary">Refresh</button></div>
+<div id="projects" role="list" class="project-list"></div></div>
+<section class="panel" id="details"><h2>Project details</h2><p>Select a project from your list.</p></section></section>
+<section class="panel" id="actions" hidden><h2>Owner actions</h2><p class="muted">Actions require a current project and recorded evidence. No customer websites are published and no Stripe payment is collected by these controls.</p>
+<div class="grid">
+<div><label for="action">Move project to</label><select id="action">
+<option value="">Choose next stage</option><option value="REVIEWING">Review request</option><option value="QUOTED">Record approved written quote</option><option value="ACCEPTED">Record accepted quote</option><option value="BUILDING">Mark development started</option><option value="PREVIEW_READY">Mark private preview verified</option><option value="DELIVERED">Record delivered website and confirmed receipt</option><option value="CANCELLED">Cancel project</option></select></div>
+<div><label for="finalAmount">Approved final amount (CAD)</label><input id="finalAmount" type="number" min="500" step="0.01" placeholder="e.g. 1200.00"></div>
+<div><label for="dueDays">Invoice due days (agreed in writing)</label><input id="dueDays" type="number" min="1" max="60" value="14"></div>
+<div><label for="quoteEvidence">Signed quote reference</label><input id="quoteEvidence" maxlength="180" placeholder="quote/signed-001"></div>
+<div><label for="acceptedEvidence">Customer accepted-quote reference</label><input id="acceptedEvidence" maxlength="180" placeholder="acceptance/001"></div>
+<div><label for="deliveryEvidence">Delivered website handover reference</label><input id="deliveryEvidence" maxlength="180" placeholder="delivery/handover-001"></div>
+<div><label for="customerEvidence">Customer approval evidence reference</label><input id="customerEvidence" maxlength="180" placeholder="approval/version-001"></div>
+<div><label for="receiptEvidence">Customer receipt acknowledgment</label><input id="receiptEvidence" maxlength="180" placeholder="receipt/001"></div>
+</div><div class="checks"><label><input id="previewCheck" type="checkbox"> Private preview independently checked</label>
+<label><input id="securityCheck" type="checkbox"> Security tests passed</label>
+<label><input id="customerApproved" type="checkbox"> Customer approved this exact version</label>
+<label><input id="ownerApproved" type="checkbox"> Owner approved this exact version</label></div>
+<div class="buttons"><button type="button" id="record" class="primary">Record stage change</button>
+<button type="button" id="aiDraft" class="secondary">Create private AI draft (if explicitly enabled)</button></div>
+<h3>After delivery: payments</h3><p id="invoiceAssessment" class="muted">Select a project to check eligibility.</p>
+<div class="buttons"><button type="button" id="approveInvoice" class="secondary">Approve post-delivery invoice review</button>
+<button type="button" id="sandboxInvoice" class="secondary">Create Stripe sandbox draft (test only)</button></div>
+<p id="actionFeedback" role="status" aria-live="polite"></p>
+</section>
+</div>
+</main><footer class="wrap">MapleWeb AI · Manager interface is disabled unless independently authorized, secured, and deployed. Never paste banking details or API keys into customer chat.</footer></body></html>
