@@ -1,6 +1,7 @@
 /** MapleWeb AI development Worker — no publishing or paid model calls. */
 import { saveLeadAsProject } from './order-engine.mjs';
 import { processSandboxInvoiceWebhook } from './stripe-invoices.mjs';
+import { servePrivatePreview } from './private-previews.mjs';
 // Assets are served from the public directory through Cloudflare Workers Assets.
 const PRICES = Object.freeze([
   { id: 'simple-1-2', label: 'Simple 1–2 pages', min: 500, max: 800 },
@@ -243,6 +244,7 @@ export default {
       if (env.ASSETS && typeof env.ASSETS.fetch === 'function') return env.ASSETS.fetch(req);
       return json({ error: 'Website assets not configured' }, 503);
     }
+    if (url.pathname.startsWith('/preview/')) return servePrivatePreview(req,env);
     if (req.method === 'GET' && url.pathname === '/health') return json({ status: 'ok', service: 'MapleWeb AI development agents', manager_enabled: Boolean(env.MANAGER_TOKEN), secure_submissions_enabled: submissionsEnabled(env), ai_model_connected: false });
     if (req.method === 'GET' && url.pathname === '/api/prices') return json({ currency: 'CAD', prices: PRICES });
     if (req.method === 'GET' && url.pathname === '/api/config') {
