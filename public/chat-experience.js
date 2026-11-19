@@ -215,6 +215,16 @@
    save.append(b);oldLog.append(save);scrollDown();
   });
   oldLog.append(controls);scrollDown();
+  // Prepare the optional secure handoff step when planning ends.
+  // This checks availability only; no data is sent without customer consent.
+  if(window.MapleWebHandoff&&typeof window.MapleWebHandoff.open==='function'){
+    window.MapleWebHandoff.open({
+      host:oldLog,
+      getAnswers:function(){return Object.assign({},answers);},
+      addMessage:addMessage,
+      onSuccess:function(data){submittedReference=data.reference;}
+    });
+  }
  }
  function resizeField(){field.style.height='auto';field.style.height=Math.min(155,Math.max(34,field.scrollHeight))+'px';}
  function submit(input){
