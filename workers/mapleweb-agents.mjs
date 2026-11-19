@@ -1,4 +1,5 @@
 /** MapleWeb AI development Worker — no publishing or paid model calls. */
+import { saveLeadAsProject } from './order-engine.mjs';
 // Assets are served from the public directory through Cloudflare Workers Assets.
 const PRICES = Object.freeze([
   { id: 'simple-1-2', label: 'Simple 1–2 pages', min: 500, max: 800 },
@@ -224,11 +225,15 @@ async function submit(req, env, fetcher) {
   try { passed = await verifyCaptcha(token, env.TURNSTILE_SECRET, req.headers.get('CF-Connecting-IP') || '', env.SITE_ORIGIN, fetcher); } catch { /* fail closed */ }
   if (!passed) return json({ error: 'Security check failed' }, 403);
   const id = crypto.randomUUID();
+  const projectId = crypto.randomUUID();
   try {
-    await env.DB.prepare('INSERT INTO submissions (id,created_at,name,email,answers_json,status) VALUES (?, ?, ?, ?, ?, ?)')
-      .bind(id, new Date().toISOString(), name, email, JSON.stringify(answers), 'NEW').run();
-  } catch { return json({ error: 'Could not save request. Please try again later.' }, 503); }
-  return json({ saved: true, reference: id, delivered_to_agent: false }, 201);
+    const result = await saveLeadAsProject(env.DB, { submissionId: id, projectId, name, email, answers });
+    // Saved atomically in D1 with a private, fixed-template starter preview.
+    // No AI inference, payment, email, or website publication occurs on intake.
+    return json(result, 201);
+  } catch {
+    return json({ error: 'Could not save request or create project. Please try again later.' }, 503);
+  }
 }
 export default {
   async fetch(req, env = {}) {
