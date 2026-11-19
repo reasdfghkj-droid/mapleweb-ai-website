@@ -5,7 +5,7 @@
  */
 (function(){
 'use strict';
-var KEY_LIST=['business','goal','pages','features','budget','style','timeline'];
+var KEY_LIST=['business','goal','pages','features','style','timeline'];
 var scriptPromise=null;
 var activePanel=null;
 function element(tag,cls,text){
@@ -60,7 +60,7 @@ async function open(options){
   panel.setAttribute('aria-label','Send website project brief to Developer');
   panel.append(element('h3','mw-handoff-heading','Send your website plan to our Developer'));
   panel.append(element('p','mw-handoff-small',
-    'You decide what to share. Your seven answers and any extra instructions will be saved securely for a private website draft. No payment or customer-site publication happens here.'));
+    'You decide what to share. Your six answers and any extra instructions will be saved securely for a private website draft. No payment or customer-site publication happens here.'));
   var state=element('p','mw-handoff-status','Checking secure Developer connection…');
   state.setAttribute('role','status');state.setAttribute('aria-live','polite');
   panel.append(state);host.append(panel);
@@ -136,7 +136,7 @@ async function open(options){
     }
     clean.additional_details=notes.input.value.trim().slice(0,900);
     var complete=KEY_LIST.every(function(key){return Boolean(clean[key]);});
-    if(!complete){feedback.textContent='Your plan is incomplete. Finish the seven planning questions first.';return;}
+    if(!complete){feedback.textContent='Your plan is incomplete. Finish the six planning questions first.';return;}
     if(sensitive(name.input.value)||sensitive(email.input.value)||
        Object.values(clean).some(sensitive)){
       feedback.textContent='Remove any card numbers, passwords, API keys or other secrets before sending.';
