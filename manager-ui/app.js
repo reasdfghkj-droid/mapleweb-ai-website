@@ -1,7 +1,7 @@
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
-let token='',current=null;
+let token='',current=null,canDeleteAbandoned=false;
 const notice=(message,bad=false)=>{
   $('actionFeedback').textContent=message;
   $('actionFeedback').classList.toggle('error',bad);
@@ -61,6 +61,8 @@ async function load(id){
   try{
     const data=await api('/api/manager/projects/'+id);
     current=data.project;
+    canDeleteAbandoned=data.abandoned_delete_eligibility?.allowed===true;
+    $('deleteAbandoned').disabled=!canDeleteAbandoned;
     const details=$('details');details.replaceChildren();
     cell('h2',current.name||'Project details',details);
     const dl=document.createElement('dl');dl.className='detailsGrid';
@@ -185,6 +187,25 @@ $('revokePreviews').addEventListener('click',async()=>{
   }catch(e){notice(e.message,true);}
 });
 $('clearPreview').addEventListener('click',()=>{$('previewUrl').value='';});
+$('deleteAbandoned').addEventListener('click',async()=>{
+  if(!current||!canDeleteAbandoned)return;
+  const id=current.id;
+  const typed=window.prompt('Deleting this abandoned lead removes its private drafts and notices. Type DELETE to confirm. This does not email the customer.');
+  if(typed!=='DELETE')return;
+  try{
+    const x=await api('/api/manager/projects/'+id+'/delete-request',{
+      confirm:'DELETE_ABANDONED_REQUEST',projectReference:id,expectedRowVersion:current.row_version
+    });
+    if(!x.deleted)throw Error(x.error||'Deletion not verified');
+    current=null;canDeleteAbandoned=false;
+    $('actions').hidden=true;$('previewUrl').value='';
+    const details=$('details');details.replaceChildren();
+    cell('h2','Abandoned request deleted',details);
+    cell('p','Related private drafts and in-app notices were removed. No customer email was sent.',details);
+    await Promise.all([refresh(),loadInbox()]);
+    notice('Deleted abandoned request after owner confirmation.');
+  }catch(e){notice(e.message,true);}
+});
 $('approveInvoice').addEventListener('click',async()=>{
   if(!current)return;
   if(!window.confirm('Confirm the customer received the approved final website and you reviewed the final invoice amount and agreed terms?'))return;
