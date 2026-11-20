@@ -11,6 +11,7 @@ import {recordDeliveryQualityReview,getDeliveryQualityReadiness,preparePrivateHa
 import { buildWebsiteStarterBundle } from './site-bundle.mjs';
 import { createPrivatePreviewShare,revokePrivatePreviewShares } from './private-previews.mjs';
 import {issueCustomerReviewLink,listCustomerReviewLinks,revokeCustomerReviewLinks,receiptRecorded} from './customer-review.mjs';
+import {uploadFinalWebsiteFiles,getFinalWebsiteArtifact} from './final-site-files.mjs';
 import { listOwnerNotifications,markNotificationRead } from './owner-inbox.mjs';
 import { abandonedDeletionEligibility,deleteAbandonedRequest } from './order-retention.mjs';
 import { getDeveloperJobStatus,getPrivateStarterBundle,processDeveloperJob } from './developer-handoff.mjs';
@@ -81,7 +82,7 @@ export async function handleOwnerRequest(request,env={}) {
       const result=await markNotificationRead(env.DB,readMatch[1]);
       return json(result,result.ok?200:400);
     }
-    const match=/^\/api\/manager\/projects\/([0-9a-f-]{36})(?:\/(transition|improve-draft|invoice-assessment|approve-invoice|draft-test-invoice|bundle|preview-share|preview-revoke|preview-list|delete-request|builder-status|builder-output|process-build|mark-stalled-build|retry-template|quote-pack|delivery-quality|delivery-review|handover-summary|issue-review|review-links|revoke-review-links|live-draft|live-send))?$/.exec(path);
+    const match=/^\/api\/manager\/projects\/([0-9a-f-]{36})(?:\/(transition|improve-draft|invoice-assessment|approve-invoice|draft-test-invoice|bundle|preview-share|preview-revoke|preview-list|delete-request|builder-status|builder-output|process-build|mark-stalled-build|retry-template|quote-pack|delivery-quality|delivery-review|handover-summary|issue-review|review-links|revoke-review-links|live-draft|live-send|final-upload|final-artifact))?$/.exec(path);
     if(!match||!validId(match[1]))return error('Not found',404);
     const id=match[1],operation=match[2]||'';
     const row=await rowOf(env.DB,id);
@@ -91,7 +92,11 @@ export async function handleOwnerRequest(request,env={}) {
       const parsed={...row};
       try{parsed.answers=JSON.parse(row.answers_json);}catch{parsed.answers={};}
       delete parsed.answers_json;
-      return json({project:parsed,invoice_eligibility:invoiceAssessment(row),abandoned_delete_eligibility:abandonedDeletionEligibility(row),developer_build:await getDeveloperJobStatus(env.DB,id),delivery_quality:await getDeliveryQualityReadiness(env.DB,row)});
+      return json({project:parsed,invoice_eligibility:invoiceAssessment(row),abandoned_delete_eligibility:abandonedDeletionEligibility(row),developer_build:await getDeveloperJobStatus(env.DB,id),delivery_quality:await getDeliveryQualityReadiness(env.DB,row),final_artifact:await getFinalWebsiteArtifact(env.DB,env.FINAL_SITE_BUCKET,row)});
+    }
+    if(request.method==='GET'&&operation==='final-artifact'){
+      const result=await getFinalWebsiteArtifact(env.DB,env.FINAL_SITE_BUCKET,row);
+      return json(result,result.ok?200:409);
     }
     if(request.method==='GET'&&operation==='review-links'){
       const result=await listCustomerReviewLinks(env.DB,id);
@@ -133,8 +138,18 @@ export async function handleOwnerRequest(request,env={}) {
     if(request.method==='GET'&&operation==='invoice-assessment')
       return json({project_reference:id,assessment:invoiceAssessment(row)});
     if(request.method!=='POST')return error('Method not allowed',405);
+    if(operation==='final-upload'){
+      const payload=await parseBody(request,9000000);
+      const result=await uploadFinalWebsiteFiles(env.DB,row,env,payload);
+      return json(result,result.ok?200:409);
+    }
     if(operation==='issue-review'){
       const payload=await parseBody(request,2200);
+      if(env.FINAL_SITE_FILES_APPROVED==='true'&&payload?.purpose!=='QUOTE'){
+        const packageReady=await getFinalWebsiteArtifact(env.DB,env.FINAL_SITE_BUCKET,row);
+        if(!packageReady.ok||!packageReady.present)
+          return json({error:'Complete finished website ZIP must be uploaded and verified before customer review'},409);
+      }
       const result=await issueCustomerReviewLink(env.DB,row,env,payload);
       return json(result,result.ok?200:409);
     }
@@ -148,6 +163,11 @@ export async function handleOwnerRequest(request,env={}) {
     }
     if(operation==='delivery-review'){
       const payload=await parseBody(request,4500);
+      if(env.FINAL_SITE_FILES_APPROVED==='true'){
+        const uploaded=await getFinalWebsiteArtifact(env.DB,env.FINAL_SITE_BUCKET,row);
+        if(!uploaded.ok||!uploaded.present||uploaded.artifact_reference!==payload?.finalArtifactReference)
+          return json({error:'The final website ZIP must exist in private storage and match the owner QA evidence reference'},409);
+      }
       if(!payload||typeof payload!=='object')return error('Invalid final website QA request');
       const result=await recordDeliveryQualityReview(env.DB,row,payload);
       return json(result,result.ok?200:409);
@@ -207,6 +227,11 @@ export async function handleOwnerRequest(request,env={}) {
       if(!Number.isSafeInteger(payload.expectedRowVersion)||payload.expectedRowVersion!==row.row_version)
         return error('Project has changed. Reload before proceeding.',409);
       if(payload.action==='DELIVERED'){
+        if(env.FINAL_SITE_FILES_APPROVED==='true'){
+          const uploaded=await getFinalWebsiteArtifact(env.DB,env.FINAL_SITE_BUCKET,row);
+          if(!uploaded.ok||!uploaded.present)
+            return json({error:'The finished website ZIP is missing from private delivery storage'},409);
+        }
         if(env.CUSTOMER_PORTAL_APPROVED==='true'){
           const receipt=await receiptRecorded(env.DB,row);
           if(!receipt.ok)return json({error:'Customer must acknowledge final website handover through the secure review portal'},409);

@@ -58,6 +58,12 @@
 <h3>Customer quote and scope agreement</h3>
 <p class="muted">Prepare a written quote using the customer's actual website requirements, not their budget. No contract, email, invoice or payment is automatically sent.</p>
 <div class="buttons"><button id="downloadQuote" type="button" class="secondary">Download private quote draft</button></div>
+<h3>Completed website files — private handover package</h3>
+<p class="muted">Upload the ACTUAL completed website folder files, not an AI starter template. The private ZIP package can be shared only after QA and customer authorization. File storage must first be securely connected to Cloudflare R2.</p>
+<div class="formline"><label for="finishedSiteFiles">Select finished website files (up to 60; maximum 6 MB total)</label>
+<input id="finishedSiteFiles" type="file" multiple accept=".html,.css,.js,.json,.txt,.svg,.png,.jpg,.jpeg,.webp,.ico"></div>
+<div class="buttons"><button id="uploadFinalSite" class="secondary" type="button">Save completed website ZIP privately</button></div>
+<p id="finalSiteStatus" class="muted" role="status">No final-site package verified yet.</p>
 <h3>Final website delivery quality review</h3>
 <p class="muted">Only use this after a complete, separately tested customer website exists. An AI starter draft does NOT qualify. The quality review is manual owner evidence, not independent proof or customer acceptance.</p>
 <p id="deliveryQaStatus" role="status">Choose a project to check handover readiness.</p>

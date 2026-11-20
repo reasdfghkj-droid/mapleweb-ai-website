@@ -46,6 +46,10 @@ async function load(){
  for(const [value,label] of options[purpose]){
   const option=document.createElement('option');option.value=value;option.textContent=label;select.append(option);
  }
+ if(data.download_available===true){
+   $('downloadSection').hidden=false;
+   $('downloadFinalSite').href='/api/customer/review/'+token+'/download';
+ }else{$('downloadSection').hidden=true;$('downloadFinalSite').removeAttribute('href');}
  $('reviewDetails').hidden=false;$('reviewSubmit').disabled=false;
  status('Review the separate written terms or finished website, then choose your decision.');
 }

@@ -1,0 +1,103 @@
+name: MapleWeb finished website private file delivery
+on:
+  push:
+    branches: [main, mapleweb-final-site-file-delivery-2026-11-19]
+    paths:
+      - 'workers/**'
+      - 'manager-ui/**'
+      - 'public/customer-review*'
+      - 'migrations/**'
+      - 'tests/**'
+      - 'wrangler.jsonc'
+      - 'wrangler.manager.jsonc'
+      - '.github/workflows/final-site-file-delivery.yml'
+  pull_request:
+    paths:
+      - 'workers/**'
+      - 'manager-ui/**'
+      - 'public/customer-review*'
+      - 'migrations/**'
+      - 'tests/**'
+      - 'wrangler.jsonc'
+      - 'wrangler.manager.jsonc'
+      - '.github/workflows/final-site-file-delivery.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test finished website ZIP transfer and all existing safety checks
+        run: |
+          node tests/final-site-files.test.mjs
+          node tests/customer-review.test.mjs
+          node tests/live-stripe.test.mjs
+          node tests/delivery-quality.test.mjs
+          node tests/owner-quote-pack.test.mjs
+          node tests/automation-phase2.test.mjs
+          node tests/agent-operations.test.mjs
+          node tests/private-preview-inbox.test.mjs
+          node tests/chat-developer-handoff.test.mjs
+          node tests/scope-pricing.test.mjs
+          node tests/sales-studio.test.mjs
+          node tests/post-delivery.test.mjs
+      - name: Independently validate generated ZIP with Python's zipfile library
+        run: |
+          python3 - <<'PY'
+          import zipfile
+          path='/tmp/mapleweb-test-final.zip'
+          with zipfile.ZipFile(path) as z:
+            assert set(z.namelist())=={
+              'index.html','styles.css','assets/script.js','assets/logo.png'
+            }
+            assert z.testzip() is None
+            assert b'Finished website' in z.read('index.html')
+            assert b'body{' in z.read('styles.css')
+            assert z.read('assets/logo.png').startswith(b'\x89PNG')
+          print('PASS: valid CRC32, UTF-8 path metadata, central directory and all four customer website files')
+          PY
+      - name: Validate all eight private Cloudflare D1 migrations
+        run: |
+          python3 - <<'PY'
+          import sqlite3, pathlib, uuid
+          db=sqlite3.connect(':memory:')
+          db.execute('PRAGMA foreign_keys=ON')
+          files=[
+            '0001_secure_sales_submissions.sql',
+            '0002_orders_projects_and_billing.sql',
+            '0003_private_previews_notifications.sql',
+            '0004_developer_handoff_queue.sql',
+            '0005_agent_recovery.sql',
+            '0006_delivery_quality_reviews.sql',
+            '0007_customer_review_tokens.sql',
+            '0008_final_website_artifacts.sql'
+          ]
+          for name in files:
+            db.executescript(pathlib.Path('migrations',name).read_text())
+            print('PASS',name)
+          sid,pid=str(uuid.uuid4()),str(uuid.uuid4())
+          at='2026-11-19T19:00:00.000Z'
+          db.execute('INSERT INTO submissions(id,created_at,name,email,answers_json,status) VALUES (?,?,?,?,?,?)',
+              (sid,at,'Test','test@example.com','{}','NEW'))
+          db.execute('INSERT INTO projects(id,submission_id,created_at,updated_at,draft_html) VALUES (?,?,?,?,?)',
+              (pid,sid,at,at,'<html></html>'))
+          data=(pid,1,'private/'+pid+'/site.zip','e'*64,1024,4,at)
+          db.execute('INSERT INTO final_website_artifacts(project_id,version,storage_key,sha256_hex,byte_size,file_count,created_at) VALUES (?,?,?,?,?,?,?)',data)
+          try:
+            db.execute('INSERT INTO final_website_artifacts(project_id,version,storage_key,sha256_hex,byte_size,file_count,created_at) VALUES (?,?,?,?,?,?,?)',data)
+            raise AssertionError('Duplicate version upload unexpectedly allowed')
+          except sqlite3.IntegrityError:
+            print('PASS duplicate final website upload blocked')
+          db.execute('DELETE FROM submissions WHERE id=?',(sid,))
+          assert db.execute('SELECT COUNT(*) FROM final_website_artifacts').fetchone()[0]==0
+          print('PASS private records cascade on eligible customer record deletion')
+          PY
+      - name: Cloudflare Worker dry-runs only - no account operations
+        run: |
+          npm install --no-audit --no-fund
+          npx wrangler deploy --dry-run --config wrangler.jsonc --outdir ./dist/public
+          npx wrangler deploy --dry-run --config wrangler.manager.jsonc --outdir ./dist/private
