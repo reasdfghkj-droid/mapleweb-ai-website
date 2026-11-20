@@ -16,6 +16,7 @@ const LIMITS={heading:120,intro:330,sectionHeading:100,sectionBody:330};
 
 export function aiDeveloperAvailable(env={}) {
   return env.AUTO_BUILD_HANDOFF_APPROVED==='true' &&
+    env.AI_DRAFTS_APPROVED==='true' &&
     env.AI_DEVELOPER_APPROVED==='true' &&
     typeof env.AI?.run==='function';
 }
