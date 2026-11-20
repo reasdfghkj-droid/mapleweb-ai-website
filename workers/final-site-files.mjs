@@ -1,3 +1,4 @@
+import {auditFinalWebsiteFiles} from './final-site-static-audit.mjs';
 /**
  * MapleWeb AI protected FINAL customer website ZIP and Cloudflare R2 storage.
  * This is a private transfer mechanism, NOT a website builder, public host,
@@ -91,6 +92,10 @@ export function packageFinalWebsite(files) {
  const text=new TextDecoder().decode(homepage.bytes);
  if(!/<html[\s>]/i.test(text)||!/<body[\s>]/i.test(text))
   return fail('The submitted index.html must be an HTML website page');
+ // Static checks are helpful safeguards, NOT a replacement for human QA.
+ const staticAudit=auditFinalWebsiteFiles(files);
+ if(!staticAudit.ok)
+  return {...fail('Final website has broken links, missing files or unfinished draft content'),static_audit:staticAudit};
  const chunks=[],central=[];
  let offset=0;
  for(const e of entries){
@@ -117,7 +122,7 @@ export function packageFinalWebsite(files) {
  const zip=merge([...chunks,...central,end]);
  if(zip.length>7500000)return fail('ZIP package exceeds secure transfer limit');
  return {ok:true,bytes:zip,byte_size:zip.length,file_count:entries.length,
-  filenames:entries.map(x=>x.path),compressed:false,published:false};
+  filenames:entries.map(x=>x.path),compressed:false,published:false,static_audit:staticAudit};
 }
 const hex=buf=>[...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 const privateReady=(env,db)=>env?.FINAL_SITE_FILES_APPROVED==='true'&&
@@ -174,7 +179,8 @@ export async function uploadFinalWebsiteFiles(db,project,env={},payload={}){
   return {ok:true,project_reference:project.id,version:project.current_version,
    private_artifact_reference:'final-artifact/'+project.id+'/v'+project.current_version,
    sha256_hex:sha,file_count:zip.file_count,byte_size:zip.byte_size,
-   owner_quality_review_required:true,customer_notified:false,published:false,delivered:false};
+   owner_quality_review_required:true,customer_notified:false,published:false,delivered:false,
+   static_audit:zip.static_audit};
  }catch{
   try{await env.FINAL_SITE_BUCKET.delete(key)}catch{/* owner must investigate orphan R2 object */}
   return fail('Final file upload incomplete. Check private R2 and D1; do not claim delivery');
