@@ -1,0 +1,89 @@
+name: MapleWeb secure customer approval portal tests
+on:
+  push:
+    branches: [main, mapleweb-secure-customer-portal-2026-11-19]
+    paths:
+      - 'workers/**'
+      - 'public/customer-review*'
+      - 'manager-ui/**'
+      - 'migrations/**'
+      - 'tests/**'
+      - 'wrangler.jsonc'
+      - 'wrangler.manager.jsonc'
+      - '.github/workflows/customer-review-portal-tests.yml'
+  pull_request:
+    paths:
+      - 'workers/**'
+      - 'public/customer-review*'
+      - 'manager-ui/**'
+      - 'migrations/**'
+      - 'tests/**'
+      - 'wrangler.jsonc'
+      - 'wrangler.manager.jsonc'
+      - '.github/workflows/customer-review-portal-tests.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run customer consent, quote, handover, agent and payment tests
+        run: |
+          node tests/customer-review.test.mjs
+          node tests/delivery-quality.test.mjs
+          node tests/owner-quote-pack.test.mjs
+          node tests/post-delivery.test.mjs
+          node tests/scope-pricing.test.mjs
+          node tests/chat-developer-handoff.test.mjs
+          node tests/agent-operations.test.mjs
+          node tests/private-preview-inbox.test.mjs
+          node tests/automation-phase2.test.mjs
+          node tests/sales-studio.test.mjs
+      - name: Validate all seven D1 database migrations and token constraints
+        run: |
+          python3 - <<'PY'
+          import sqlite3,pathlib,uuid
+          db=sqlite3.connect(':memory:')
+          db.execute('PRAGMA foreign_keys=ON')
+          for i,name in enumerate([
+            '0001_secure_sales_submissions.sql','0002_orders_projects_and_billing.sql',
+            '0003_private_previews_notifications.sql','0004_developer_handoff_queue.sql',
+            '0005_agent_recovery.sql','0006_delivery_quality_reviews.sql',
+            '0007_customer_review_tokens.sql'
+          ],1):
+            db.executescript(pathlib.Path('migrations',name).read_text())
+            print('PASS migration',i,name)
+          sid,pid,tok=str(uuid.uuid4()),str(uuid.uuid4()),str(uuid.uuid4())
+          at='2026-11-19T19:00:00.000Z'
+          db.execute('INSERT INTO submissions(id,created_at,name,email,answers_json,status) VALUES (?,?,?,?,?,?)',
+             (sid,at,'Test Client','test@example.com','{}','NEW'))
+          db.execute('INSERT INTO projects(id,submission_id,created_at,updated_at,draft_html) VALUES (?,?,?,?,?)',
+             (pid,sid,at,at,'<!doctype html>'))
+          db.execute('INSERT INTO customer_review_tokens(id,project_id,version,purpose,token_hash,created_at,expires_at) VALUES (?,?,?,?,?,?,?)',
+             (tok,pid,1,'QUOTE','e'*64,at,'2027-11-19T19:00:00.000Z'))
+          db.execute('INSERT INTO customer_review_responses(id,project_id,token_id,version,purpose,decision,created_at,note) VALUES (?,?,?,?,?,?,?,?)',
+             (str(uuid.uuid4()),pid,tok,1,'QUOTE','ACCEPT',at,''))
+          try:
+            db.execute('INSERT INTO customer_review_responses(id,project_id,token_id,version,purpose,decision,created_at,note) VALUES (?,?,?,?,?,?,?,?)',
+             (str(uuid.uuid4()),pid,tok,1,'QUOTE','ACCEPT',at,''))
+            raise AssertionError('Single-use token can be accepted twice')
+          except sqlite3.IntegrityError:print('PASS duplicate response rejected')
+          try:
+            db.execute('INSERT INTO customer_review_tokens(id,project_id,version,purpose,token_hash,created_at,expires_at) VALUES (?,?,?,?,?,?,?)',
+             (str(uuid.uuid4()),pid,1,'INVALID','f'*64,at,'2027-11-19T19:00:00.000Z'))
+            raise AssertionError('Invalid customer review purpose allowed')
+          except sqlite3.IntegrityError:print('PASS invalid review purpose blocked')
+          db.execute('DELETE FROM submissions WHERE id=?',(sid,))
+          assert db.execute('SELECT COUNT(*) FROM customer_review_tokens').fetchone()[0]==0
+          assert db.execute('SELECT COUNT(*) FROM customer_review_responses').fetchone()[0]==0
+          print('PASS private review data deleted along with abandoned customer record')
+          PY
+      - name: Build both Cloudflare Workers with customer review routes (no deployment)
+        run: |
+          npm install --no-audit --no-fund
+          npx wrangler deploy --dry-run --config wrangler.jsonc --outdir ./dist/public
+          npx wrangler deploy --dry-run --config wrangler.manager.jsonc --outdir ./dist/private
