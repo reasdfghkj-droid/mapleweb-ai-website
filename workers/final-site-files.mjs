@@ -6,7 +6,11 @@
  * The owner uploads ACTUAL completed files, then performs independent final QA.
  * R2 bucket MUST be private. No public R2 URLs or credentials are returned.
  */
-import {hashCustomerToken} from './customer-review.mjs';
+const hashCustomerToken=async token=>{
+ if(typeof token!=='string'||!/^[A-Za-z0-9_-]{43}$/.test(token))return null;
+ const buffer=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token));
+ return [...new Uint8Array(buffer)].map(b=>b.toString(16).padStart(2,'0')).join('');
+};
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const FILE=/^[A-Za-z0-9][A-Za-z0-9._/-]{0,150}$/;
 const TEXT=/\.(html|css|js|json|txt|svg)$/i;
