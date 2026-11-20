@@ -17,7 +17,9 @@ async function api(path,body){
   const r=await fetch(path,init);
   let json;
   try{json=await r.json()}catch{throw Error('Manager response unavailable (HTTP '+r.status+')')}
-  if(!r.ok)throw Error(String(json.error||'Manager request failed').slice(0,180));
+  if(!r.ok){const err=new Error(String(json.error||'Manager request failed').slice(0,180));
+    if(json.static_audit&&typeof json.static_audit==='object')err.staticAudit=json.static_audit;
+    throw err;}
   return json;
 }
 function cell(tag,text,parent,cls){
@@ -74,6 +76,7 @@ async function load(id){
     const data=await api('/api/manager/projects/'+id);
     current=data.project;
     const artifact=data.final_artifact||{};
+    $('finalSiteAudit').textContent='Static checks help find missing assets or unfinished drafts; owner review and real functional/security tests are still required.';
     $('finalSiteStatus').textContent=artifact.present
       ?'Private final website v'+artifact.version+' · '+artifact.file_count+
        ' files · '+artifact.byte_size+' bytes. Owner QA and customer approval still required.'
@@ -351,10 +354,21 @@ $('uploadFinalSite').addEventListener('click',async()=>{
     if(!data.ok)throw Error(data.error||'Final website ZIP was not saved');
     $('qaFinalArtifact').value=data.private_artifact_reference;
     $('finishedSiteFiles').value='';$('finishedSiteFolder').value='';
+    const quality=data.static_audit||{};
+    $('finalSiteAudit').textContent='Static scan: '+(quality.warning_count||0)+
+      ' warning(s). '+(quality.warnings||[]).slice(0,5).map(x=>x.code+' ('+x.file+')').join('; ')+
+      '. Static checks are not complete security or functional testing.';
     notice('Completed website ZIP stored privately for v'+data.version+
       '. Record the independent quality review, then request customer approval.');
     await load(current.id);
-  }catch(e){notice(e.message,true);}
+  }catch(e){
+    if(e.staticAudit){
+      const problems=(e.staticAudit.blockers||[]).slice(0,7);
+      $('finalSiteAudit').textContent='Upload rejected. Fix these issues: '+
+        problems.map(x=>x.code+' in '+x.file+': '+x.detail).join('; ');
+    }
+    notice(e.message,true);
+  }
 });
 $('saveDeliveryQA').addEventListener('click',async()=>{
   if(!current||current.status!=='PREVIEW_READY')return;
