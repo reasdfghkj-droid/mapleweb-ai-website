@@ -1,0 +1,51 @@
+name: MapleWeb scope-aware 8-page Website Developer
+on:
+  push:
+    branches: [main, mapleweb-developer-scope-aware-site-builder-2026-11-20]
+    paths:
+      - 'workers/site-blueprint.mjs'
+      - 'workers/site-bundle.mjs'
+      - 'workers/ai-website-developer.mjs'
+      - 'public/build-with-ai.html'
+      - 'tests/**'
+      - '.github/workflows/site-blueprint-tests.yml'
+  pull_request:
+    paths:
+      - 'workers/site-blueprint.mjs'
+      - 'workers/site-bundle.mjs'
+      - 'workers/ai-website-developer.mjs'
+      - 'public/build-with-ai.html'
+      - 'tests/**'
+      - '.github/workflows/site-blueprint-tests.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate scope-aware Website Developer and no-budget sales
+        run: |
+          node tests/site-blueprint.test.mjs
+          node tests/agent-operations.test.mjs
+          node tests/chat-developer-handoff.test.mjs
+          node tests/scope-pricing.test.mjs
+          node tests/sales-studio.test.mjs
+          node tests/automation-phase2.test.mjs
+      - name: Real SQLite customer delivery journey and security tests
+        run: |
+          node --disable-warning=ExperimentalWarning tests/full-system-sqlite.test.mjs
+          node tests/delivery-quality.test.mjs
+          node tests/customer-review.test.mjs
+          node tests/final-site-files.test.mjs
+          node tests/customer-email.test.mjs
+          node tests/live-stripe.test.mjs
+          node --disable-warning=ExperimentalWarning tests/retention-history.test.mjs
+      - name: Compile both Cloudflare Workers without deployment
+        run: |
+          npm install --no-audit --no-fund
+          npx wrangler deploy --dry-run --config wrangler.jsonc --outdir ./dist/public
+          npx wrangler deploy --dry-run --config wrangler.manager.jsonc --outdir ./dist/private
