@@ -1,0 +1,42 @@
+name: MapleWeb Stripe after-delivery real database integration
+on:
+  push:
+    branches: [main, mapleweb-stripe-real-db-integration-2026-11-20]
+    paths:
+      - 'workers/stripe-live.mjs'
+      - 'workers/owner-api.mjs'
+      - 'tests/**'
+      - '.github/workflows/stripe-full-sql-integration.yml'
+  pull_request:
+    paths:
+      - 'workers/stripe-live.mjs'
+      - 'workers/owner-api.mjs'
+      - 'tests/**'
+      - '.github/workflows/stripe-full-sql-integration.yml'
+permissions:
+  contents: read
+jobs:
+  payments:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Real SQLite schema with simulated LIVE Stripe (no actual money)
+        run: node --disable-warning=ExperimentalWarning tests/stripe-full-journey-sqlite.test.mjs
+      - name: Verify all prior payment and delivery safety conditions
+        run: |
+          node tests/live-stripe.test.mjs
+          node tests/post-delivery.test.mjs
+          node --disable-warning=ExperimentalWarning tests/full-system-sqlite.test.mjs
+          node tests/customer-review.test.mjs
+          node tests/customer-email.test.mjs
+          node tests/final-site-files.test.mjs
+          node tests/final-site-static-audit.test.mjs
+          node --disable-warning=ExperimentalWarning tests/retention-history.test.mjs
+      - name: Compile both Cloudflare Workers without publishing
+        run: |
+          npm install --no-audit --no-fund
+          npx wrangler deploy --dry-run --config wrangler.jsonc --outdir ./dist/public
+          npx wrangler deploy --dry-run --config wrangler.manager.jsonc --outdir ./dist/private
