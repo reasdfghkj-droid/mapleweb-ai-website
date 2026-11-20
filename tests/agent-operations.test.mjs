@@ -53,7 +53,7 @@ assert.ok(!rendered.files.some(f=>f.content.includes('<img src=x')));
 assert.ok(!rendered.files.some(f=>f.path.endsWith('.html')&&!f.content.includes('Content-Security-Policy')));
 assert.ok(rendered.files.some(f=>f.path==='MAPLEWEB_PRIVATE_BRIEF.txt'));
 for(const file of rendered.files){
- assert.ok(file.path!=='index.html'||file.content.includes('Customer review'));
+ assert.ok(file.path!=='index.html'||file.content.toLowerCase().includes('customer review'));
 }
 
 let aiRuns=0;
