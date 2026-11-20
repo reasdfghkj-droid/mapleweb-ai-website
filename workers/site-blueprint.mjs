@@ -83,7 +83,7 @@ const integrations=[
   title:'Working contact form',steps:'Connect a verified email or CRM backend with consent, spam controls, data retention and delivery testing.'},
  {id:'members',rx:/\b(login|sign\s*in|account|membership|member portal|user portal)\b/i,
   title:'User accounts',steps:'Implement real authentication, protected data storage, account recovery, access controls and security reviews.'},
- {id:'custom_api',rx:/\b(integration|api|crm|database sync|third.party)\b/i,
+ {id:'custom_api',rx:/\b(integrations?|api|crm|database sync|third.party)\b/i,
   title:'External service integrations',steps:'List each third-party service, verify credentials and permissions, and test failures and data privacy.'},
  {id:'cms',rx:/\b(blog|content management|cms|news updates)\b/i,
   title:'Editable content or blog',steps:'Select and secure a content management system and confirm editing permissions, backups and publishing rules.'}
