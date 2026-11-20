@@ -17,7 +17,7 @@ https://mapleweb-ai-website.reasdfghkj.workers.dev/
 - Owner-attested 10-check finished website QA record, versioned approvals and revisions.
 - Protected finished website ZIP packaging, R2 metadata, private customer download.
 - Sandbox Stripe invoice tests plus guarded LIVE Stripe invoice create/finalize/send/payment webhook code and owner-only payout status.
-- Extensive regression suites and eight D1 migrations.
+- Extensive regression suites and nine D1 migrations.
 
 ## What is NOT yet a live business
 
@@ -27,7 +27,7 @@ GitHub tests prove code behavior with simulated accounts. They do not establish 
 
 ## Owner actions that require authorized account access
 
-1. **Cloudflare**: in the correct account create ONE D1 database, apply migrations 0001–0008 in order, and bind it as DB to both the public Worker and a separate protected Manager Worker.
+1. **Cloudflare**: in the correct account create ONE D1 database, apply migrations 0001–0009 in order, and bind it as DB to both the public Worker and a separate protected Manager Worker.
 2. **Cloudflare R2**: review storage/operation prices, create a PRIVATE bucket with no public r2.dev link, and bind it as FINAL_SITE_BUCKET to both Workers.
 3. **Cloudflare Turnstile**: create a widget for the exact public website hostname, securely configure its site key and secret, an encrypted rate-limit key and precise SITE_ORIGIN. Finalize privacy, retention and consent review.
 4. **Private Manager**: deploy the separate Worker from wrangler.manager.jsonc ONLY behind Cloudflare Access on an owner-restricted hostname. Secure its independent encrypted MANAGER_TOKEN. Check anonymous access is denied.
@@ -49,6 +49,7 @@ The audit deliberately never claims full launch readiness without separate autho
 
 - No deposits, no payment before actual delivery, no automatic invoice sending from a customer chat.
 - Never put bank details or API keys in source files or messages.
+- Verify the customer email sender domain and one-send ledger with migration 0009 before sending any real review invitations.
 - A customer review link is a bearer secret: share it only with the intended recipient.
 - Do not publish any customer's website without explicit owner and customer approval.
 - Do not make paid AI requests or purchase hosting without owner authorization.

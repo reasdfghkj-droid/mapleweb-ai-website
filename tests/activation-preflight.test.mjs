@@ -36,6 +36,8 @@ function status(id){
 assert.equal(status('public_worker'),true);
 assert.equal(status('private_manager'),true);
 assert.equal(status('d1_migration_files'),true);
+assert.ok(fs.readFileSync('scripts/activation-preflight.mjs','utf8').includes('0009_customer_review_email.sql'),
+ 'Customer email migration must be in the mandatory launch preflight');
 assert.equal(status('public_d1'),false);
 assert.equal(status('private_d1'),false);
 assert.equal(status('public_r2'),false);
