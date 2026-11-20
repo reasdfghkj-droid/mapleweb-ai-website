@@ -73,6 +73,8 @@ async function load(id){
   try{
     const data=await api('/api/manager/projects/'+id);
     current=data.project;
+    $('reviewUrl').value='';
+    $('reviewStatus').textContent='Create a new private quote or website review link for this project, after its conditions are met.';
     const qa=data.delivery_quality||{};
     $('deliveryQaStatus').textContent=qa.ready
       ?'Owner QA recorded for version '+qa.version+' · '+qa.delivery_method+
@@ -140,7 +142,7 @@ $('connect').addEventListener('click',async()=>{
 });
 $('disconnect').addEventListener('click',()=>{
   token='';current=null;$('workspace').hidden=true;$('disconnect').disabled=true;
-  $('projects').replaceChildren();$('details').replaceChildren();$('inbox').replaceChildren();$('agentQueue').replaceChildren();$('previewUrl').value='';
+  $('projects').replaceChildren();$('details').replaceChildren();$('inbox').replaceChildren();$('agentQueue').replaceChildren();$('reviewUrl').value='';$('previewUrl').value='';
   status('Disconnected. The token was cleared from memory.');
 });
 $('refresh').addEventListener('click',()=>refresh().catch(e=>notice(e.message,true)));
@@ -352,6 +354,43 @@ $('downloadHandoverSummary').addEventListener('click',async()=>{
     setTimeout(()=>URL.revokeObjectURL(url),1000);
     notice('Private QA checklist saved for review; it is not proof of delivery or payment.');
   }catch(e){notice(e.message,true);}
+});
+$('issueReview').addEventListener('click',async()=>{
+  if(!current)return;
+  const purpose=$('reviewPurpose').value;
+  if(!window.confirm('Issue a private, single-use '+purpose+' link for this project version? Share it only with the intended customer. This does not deliver the website or send an invoice.'))return;
+  try{
+    const body={
+      confirm:'ISSUE_SINGLE_USE_CUSTOMER_REVIEW_LINK',
+      expectedRowVersion:current.row_version,
+      currentVersion:current.current_version,
+      purpose,hours:72
+    };
+    if(purpose==='DELIVERY_RECEIPT')body.handoverReference=$('handoverReference').value.trim();
+    const result=await api('/api/manager/projects/'+current.id+'/issue-review',body);
+    if(!result.ok||!result.url)throw Error(result.error||'Review link could not be issued');
+    $('reviewUrl').value=result.url;
+    $('reviewStatus').textContent='Single-use link for '+result.purpose+' expires '+result.expires_at+
+      '. Copy it now: the raw secret is not kept by our project database.';
+    notice('Private link prepared. It has NOT been emailed to the customer.');
+  }catch(e){notice(e.message,true);}
+});
+$('revokeReview').addEventListener('click',async()=>{
+  if(!current)return;
+  if(!window.confirm('Revoke ALL active quote, final-review and receipt links for this project?'))return;
+  try{
+    const result=await api('/api/manager/projects/'+current.id+'/revoke-review-links',{
+      confirm:'REVOKE_ALL_CUSTOMER_REVIEW_LINKS',expectedRowVersion:current.row_version
+    });
+    if(!result.ok)throw Error(result.error||'Unable to revoke');
+    $('reviewUrl').value='';
+    $('reviewStatus').textContent='Revoked '+result.revoked_count+' active customer review link(s).';
+    notice('Outstanding private customer review links revoked.');
+  }catch(e){notice(e.message,true);}
+});
+$('clearReview').addEventListener('click',()=>{
+  $('reviewUrl').value='';
+  $('reviewStatus').textContent='Review link cleared from this dashboard session.';
 });
 $('approveInvoice').addEventListener('click',async()=>{
   if(!current)return;
