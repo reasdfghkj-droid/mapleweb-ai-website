@@ -79,7 +79,7 @@ export async function buildPrivateAIWebsite(raw,env={}) {
         {role:'system',content:system},
         {role:'user',content:'Required HTML file names: '+JSON.stringify(pages)+
           '\nCustomer-consented website requirements: '+JSON.stringify(clean)}
-      ],max_tokens:1700,temperature:0.3
+      ],max_tokens:Math.min(2800,600+pages.length*250),temperature:0.3
     });
   }catch{return {ok:false,code:'AI_UNAVAILABLE',model_called:true,
     message:'Workers AI failed. An owner must review this project; no automatic retry'};}
