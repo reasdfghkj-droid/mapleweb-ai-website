@@ -198,19 +198,39 @@ export async function getFinalWebsiteArtifact(db,bucket,project){
    'FROM final_website_artifacts WHERE project_id=? AND version=?'
   ).bind(project.id,project.current_version).first();
   if(!r)return {ok:true,present:false,version:project.current_version};
-  if(typeof bucket?.head!=='function')
+  if(typeof bucket?.head!=='function'||typeof bucket?.get!=='function')
    return fail('Private final website bucket is not bound for verification');
+  if(!Number.isSafeInteger(r.byte_size)||r.byte_size<100||r.byte_size>7500000||
+     !/^[0-9a-f]{64}$/.test(r.sha256_hex||''))
+   return fail('Final website size or approved digest is invalid');
   const object=await bucket.head(r.storage_key);
   if(!object||object.size!==r.byte_size)
    return fail('Final R2 package is missing or its size changed');
   if(object.customMetadata?.sha256_hex && object.customMetadata.sha256_hex!==r.sha256_hex)
    return fail('Private website metadata SHA-256 does not match approved ZIP');
+  // A head() check proves object presence, not actual byte integrity.
+  // Before approving the ZIP for QA or customer review, read at most 7.5 MB
+  // and compare its full content hash to the immutable database record.
+  const candidate=await bucket.get(r.storage_key);
+  if(!candidate||candidate.size!==r.byte_size||
+     (!candidate.body&&typeof candidate.arrayBuffer!=='function'))
+   return fail('Final R2 package cannot be read securely');
+  if(candidate.customMetadata?.sha256_hex &&
+     candidate.customMetadata.sha256_hex!==r.sha256_hex)
+   return fail('Private website download metadata changed since approval');
+  let data;
+  try{
+   data=typeof candidate.arrayBuffer==='function'?
+     await candidate.arrayBuffer():await new Response(candidate.body).arrayBuffer();
+  }catch{return fail('Final R2 package could not be read for integrity verification');}
+  if(data.byteLength!==r.byte_size||(await sha256Bytes(data))!==r.sha256_hex)
+   return fail('Final website ZIP contents do not match the owner-approved SHA-256');
   return {ok:true,present:true,version:r.version,
    artifact_reference:'final-artifact/'+project.id+'/v'+r.version,
    sha256_hex:r.sha256_hex,byte_size:r.byte_size,file_count:r.file_count,
    uploaded_at:r.created_at,verified_r2_presence:true,
    metadata_sha256_matches:object.customMetadata?.sha256_hex===r.sha256_hex,
-   full_sha256_content_verified:false,
+   full_sha256_content_verified:true,
    published:false,customer_delivered:false};
  }catch{return fail('Final website metadata or storage unavailable');}
 }
