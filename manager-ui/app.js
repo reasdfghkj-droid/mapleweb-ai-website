@@ -142,7 +142,7 @@ $('connect').addEventListener('click',async()=>{
 });
 $('disconnect').addEventListener('click',()=>{
   token='';current=null;$('workspace').hidden=true;$('disconnect').disabled=true;
-  $('projects').replaceChildren();$('details').replaceChildren();$('inbox').replaceChildren();$('agentQueue').replaceChildren();$('reviewUrl').value='';$('previewUrl').value='';
+  $('projects').replaceChildren();$('details').replaceChildren();$('inbox').replaceChildren();$('agentQueue').replaceChildren();$('reviewUrl').value='';$('stripePaymentLink').value='';$('previewUrl').value='';
   status('Disconnected. The token was cleared from memory.');
 });
 $('refresh').addEventListener('click',()=>refresh().catch(e=>notice(e.message,true)));
@@ -391,6 +391,51 @@ $('revokeReview').addEventListener('click',async()=>{
 $('clearReview').addEventListener('click',()=>{
   $('reviewUrl').value='';
   $('reviewStatus').textContent='Review link cleared from this dashboard session.';
+});
+$('stripeLiveCheck').addEventListener('click',async()=>{
+  try{
+    const x=await api('/api/manager/live-stripe-status');
+    $('stripeLiveStatus').textContent='Account verified: '+x.account_verified+
+      ' · Canadian account: '+x.country_is_canada+
+      ' · Charges enabled: '+x.charges_enabled+
+      ' · Payouts enabled: '+x.payouts_enabled;
+  }catch(e){$('stripeLiveStatus').textContent='Live Stripe is unavailable: '+e.message;}
+});
+$('stripeLiveDraft').addEventListener('click',async()=>{
+  if(!current)return;
+  if(!window.confirm('Create a REAL Stripe invoice DRAFT for this delivered website? The customer will NOT be emailed or charged yet. This requires tax review, payout activation and a completed delivery/approval record.'))return;
+  try{
+    const x=await api('/api/manager/projects/'+current.id+'/live-draft',{
+      confirm:'CREATE_POST_DELIVERY_LIVE_INVOICE_DRAFT',
+      expectedRowVersion:current.row_version
+    });
+    if(!x.ok)throw Error(x.error||'Live draft creation was blocked');
+    notice('Live invoice draft created '+x.invoice_id+'. NOT sent. Review every tax line and agreed price in Stripe first.');
+    await load(current.id);
+  }catch(e){notice(e.message,true);}
+});
+$('stripeLiveSend').addEventListener('click',async()=>{
+  if(!current)return;
+  const typed=window.prompt('This will FINALIZE and EMAIL a REAL Stripe payment invoice to the customer. Confirm website delivery, receipt, signed scope, tax and exact amount. Type SEND to continue.');
+  if(typed!=='SEND')return;
+  try{
+    const x=await api('/api/manager/projects/'+current.id+'/live-send',{
+      confirm:'SEND_POST_DELIVERY_LIVE_INVOICE',
+      expectedRowVersion:current.row_version
+    });
+    if(!x.ok)throw Error(x.error||'Live invoice sending was blocked');
+    $('stripePaymentLink').value=x.hosted_invoice_url||'';
+    notice('Stripe confirms the live invoice was sent to the customer. Payment still needs to be made and confirmed by Stripe.');
+    await load(current.id);
+  }catch(e){notice(e.message,true);}
+});
+$('stripePayouts').addEventListener('click',async()=>{
+  try{
+    const x=await api('/api/manager/live-payouts');
+    const items=(x.payouts||[]).map(p=>p.status+' '+(p.amount_cents/100).toFixed(2)+' '+p.currency).join('; ');
+    $('stripeLiveStatus').textContent='Stripe payouts: '+(items||'No recent payouts')+
+      '. Only Stripe can settle funds to the verified bank.';
+  }catch(e){$('stripeLiveStatus').textContent='Payout report unavailable: '+e.message;}
 });
 $('approveInvoice').addEventListener('click',async()=>{
   if(!current)return;
