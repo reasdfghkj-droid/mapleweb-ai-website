@@ -40,16 +40,17 @@ const migrations=[
  '0005_agent_recovery.sql',
  '0006_delivery_quality_reviews.sql',
  '0007_customer_review_tokens.sql',
- '0008_final_website_artifacts.sql'
+ '0008_final_website_artifacts.sql',
+ '0009_customer_review_email.sql'
 ];
-check('d1_migration_files','All eight D1 migration files exist',
+check('d1_migration_files','All nine D1 migration files exist',
  migrations.every(name=>exists(path.join('migrations',name))),
  'Restore all schema migrations before creating customer records');
 function binding(conf,key,binding){
  return Array.isArray(conf?.[key])&&conf[key].some(entry=>entry?.binding===binding);
 }
 check('public_d1','Secure D1 storage bound to the public Worker',
- binding(customer,'d1_databases','DB'),'Create and bind a private D1 database, then safely apply migrations 0001–0008');
+ binding(customer,'d1_databases','DB'),'Create and bind a private D1 database, then safely apply migrations 0001–0009');
 check('private_d1','Same secure D1 storage bound to private Manager',
  binding(manager,'d1_databases','DB'),'Bind the same verified D1 database to the protected Manager');
 check('public_r2','Private finished-site R2 storage bound to the customer Worker',
