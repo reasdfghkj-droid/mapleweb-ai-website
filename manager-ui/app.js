@@ -316,7 +316,12 @@ $('downloadQuote').addEventListener('click',async()=>{
 });
 $('uploadFinalSite').addEventListener('click',async()=>{
   if(!current)return;
-  const list=[...$('finishedSiteFiles').files];
+  const folderFiles=[...$('finishedSiteFolder').files];
+  const manualFiles=[...$('finishedSiteFiles').files];
+  if(folderFiles.length&&manualFiles.length){
+    notice('Choose either a complete folder or individual files, not both.',true);return;
+  }
+  const list=folderFiles.length?folderFiles:manualFiles;
   if(!list.length){notice('Select finished website files first.',true);return;}
   if(list.length>60||list.some(f=>f.size>2000000)||
      list.reduce((sum,f)=>sum+f.size,0)>6000000){
@@ -345,7 +350,7 @@ $('uploadFinalSite').addEventListener('click',async()=>{
     });
     if(!data.ok)throw Error(data.error||'Final website ZIP was not saved');
     $('qaFinalArtifact').value=data.private_artifact_reference;
-    $('finishedSiteFiles').value='';
+    $('finishedSiteFiles').value='';$('finishedSiteFolder').value='';
     notice('Completed website ZIP stored privately for v'+data.version+
       '. Record the independent quality review, then request customer approval.');
     await load(current.id);
