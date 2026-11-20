@@ -1,0 +1,40 @@
+name: MapleWeb full-business readiness audit
+on:
+  push:
+    branches: [main, mapleweb-operational-readiness-2026-11-19]
+    paths:
+      - 'scripts/activation-preflight.mjs'
+      - 'manager-ui/**'
+      - 'tests/activation-preflight.test.mjs'
+      - '.github/workflows/system-readiness.yml'
+  pull_request:
+    paths:
+      - 'scripts/activation-preflight.mjs'
+      - 'manager-ui/**'
+      - 'tests/activation-preflight.test.mjs'
+      - '.github/workflows/system-readiness.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify readiness auditor and folder handover UI
+        run: node tests/activation-preflight.test.mjs
+      - name: Show READ-ONLY status (never activate financial or customer services)
+        run: node scripts/activation-preflight.mjs
+      - name: Verify secure website handover remains tested
+        run: |
+          node tests/final-site-files.test.mjs
+          python3 - <<'PY'
+          import zipfile
+          with zipfile.ZipFile('/tmp/mapleweb-test-final.zip') as z:
+              assert z.testzip() is None
+              assert 'index.html' in z.namelist()
+          print('PASS valid complete website ZIP')
+          PY
