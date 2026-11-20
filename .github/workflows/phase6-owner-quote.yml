@@ -1,0 +1,40 @@
+name: MapleWeb Phase 6 owner quote and delivery terms tests
+on:
+  push:
+    branches: [main, mapleweb-owner-quote-packs-2026-11-19]
+    paths:
+      - 'billing/**'
+      - 'workers/owner-api.mjs'
+      - 'manager-ui/**'
+      - 'tests/**'
+      - '.github/workflows/phase6-owner-quote.yml'
+  pull_request:
+    paths:
+      - 'billing/**'
+      - 'workers/owner-api.mjs'
+      - 'manager-ui/**'
+      - 'tests/**'
+      - '.github/workflows/phase6-owner-quote.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify private quote drafts, pricing, payment rules and agent recovery
+        run: |
+          node tests/owner-quote-pack.test.mjs
+          node tests/scope-pricing.test.mjs
+          node tests/sales-studio.test.mjs
+          node tests/post-delivery.test.mjs
+          node tests/agent-operations.test.mjs
+          node tests/chat-developer-handoff.test.mjs
+      - name: Validate public and private Worker builds without deployment
+        run: |
+          npm install --no-audit --no-fund
+          npx wrangler deploy --dry-run --config wrangler.jsonc --outdir ./dist/public
+          npx wrangler deploy --dry-run --config wrangler.manager.jsonc --outdir ./dist/private
