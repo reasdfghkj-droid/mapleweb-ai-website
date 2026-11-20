@@ -40,17 +40,18 @@ export async function processDeveloperJob(db,projectId,env={}) {
   if(!job||job.status!=='QUEUED'||!['NEW','REVIEWING'].includes(job.project_status))
     return {ok:false,reason:'Job is not queued for a review-only starter',accepted:false};
   const timestamp=new Date().toISOString();
+  const plannedGenerator=aiDeveloperAvailable(env)?'cloudflare-workers-ai':'fixed-template';
   try{
     const claim=await db.prepare(
-      "UPDATE developer_build_jobs SET status='BUILDING',started_at=?,attempts=attempts+1 "+
+      "UPDATE developer_build_jobs SET status='BUILDING',started_at=?,generator=?,attempts=attempts+1 "+
       "WHERE project_id=? AND status='QUEUED' AND attempts=0 AND EXISTS "+
       "(SELECT 1 FROM projects WHERE id=? AND status IN ('NEW','REVIEWING') AND current_version=?)"
-    ).bind(timestamp,projectId,projectId,job.current_version).run();
+    ).bind(timestamp,plannedGenerator,projectId,projectId,job.current_version).run();
     if(claim?.meta?.changes!==1)return {ok:false,reason:'Build job was already claimed or project changed',accepted:false};
   }catch{return {ok:false,reason:'Build job could not be claimed',accepted:false};}
   try {
     const a=JSON.parse(job.answers_json);
-    const useAI=aiDeveloperAvailable(env);
+    const useAI=plannedGenerator==='cloudflare-workers-ai';
     const enhanced=useAI?await buildPrivateAIWebsite(a,env):null;
     if(useAI&&!enhanced?.ok)throw Error('AI generation failed and cannot be automatically retried');
     const result=useAI?enhanced.bundle:buildWebsiteStarterBundle(a);
