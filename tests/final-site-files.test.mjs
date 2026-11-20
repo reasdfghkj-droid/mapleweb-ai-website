@@ -111,6 +111,7 @@ assert.equal(current.present,true);
 assert.equal(current.version,3);
 assert.equal(current.byte_size,stored.length);
 assert.equal(current.artifact_reference,uploaded.private_artifact_reference);
+assert.equal(current.full_sha256_content_verified,true,'Manager QA requires full actual ZIP SHA-256 verification');
 assert.equal((await uploadFinalWebsiteFiles(db,project,env,payload)).ok,false,
  'No silent replacement of finished customer files');
 
@@ -132,10 +133,13 @@ assert.equal(views,2);
 // A same-size private R2 object mutation MUST never reach the customer.
 const original=new Uint8Array(stored);
 stored[110]^=1; // Corrupt one ZIP byte; size and file name are unchanged.
+const brokenOwnerStatus=await getFinalWebsiteArtifact(db,r2,project);
+assert.equal(brokenOwnerStatus.ok,false,'Manager owner QA must refuse a same-size altered R2 ZIP');
 const changed=await downloadCustomerWebsite(new Request(endpoint),env);
 assert.equal(changed.status,404,'A same-size tampered ZIP must fail SHA-256 validation');
 assert.equal(views,2,'Rejected changed files must not count as a successful download');
 stored=original;
+assert.equal((await getFinalWebsiteArtifact(db,r2,project)).full_sha256_content_verified,true);
 assert.equal((await downloadCustomerWebsite(new Request(endpoint),env)).status,200);
 assert.equal(views,3);
 // R2 metadata that conflicts with the approved D1 hash is independently rejected.
