@@ -61,7 +61,10 @@
 <h3>Completed website files — private handover package</h3>
 <p class="muted">Upload the ACTUAL completed website folder files, not an AI starter template. The private ZIP package can be shared only after QA and customer authorization. File storage must first be securely connected to Cloudflare R2.</p>
 <div class="formline"><label for="finishedSiteFiles">Select finished website files (up to 60; maximum 6 MB total)</label>
-<input id="finishedSiteFiles" type="file" multiple accept=".html,.css,.js,.json,.txt,.svg,.png,.jpg,.jpeg,.webp,.ico"></div>
+<input id="finishedSiteFiles" type="file" multiple accept=".html,.css,.js,.json,.txt,.svg,.png,.jpg,.jpeg,.webp,.ico">
+<label for="finishedSiteFolder">Or select the entire completed website folder (recommended to preserve images/assets paths)</label>
+<input id="finishedSiteFolder" type="file" webkitdirectory directory multiple>
+<p class="muted">Choose either individual files or a full folder. For a folder, paths are kept relative to its top-level folder so the website's CSS, scripts and images still load after transfer.</p></div>
 <div class="buttons"><button id="uploadFinalSite" class="secondary" type="button">Save completed website ZIP privately</button></div>
 <p id="finalSiteStatus" class="muted" role="status">No final-site package verified yet.</p>
 <h3>Final website delivery quality review</h3>
