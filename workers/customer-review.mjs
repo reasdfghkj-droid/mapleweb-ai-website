@@ -6,6 +6,7 @@
  * an email, publishes a website, takes a payment or proves legal identity.
  */
 import {getDeliveryQualityReadiness} from './delivery-quality.mjs';
+import {getFinalWebsiteArtifact} from './final-site-files.mjs';
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TOKEN=/^[A-Za-z0-9_-]{43}$/;
 const PURPOSES=new Set(['QUOTE','FINAL_REVIEW','DELIVERY_RECEIPT']);
@@ -195,7 +196,17 @@ export async function handleCustomerReview(request,env={}) {
  try{
   const row=await findValidReview(env.DB,hash);
   if(!row)return blocked();
-  if(request.method==='GET')return resp(reviewInfo(row));
+  if(request.method==='GET'){
+    let downloadAvailable=false;
+    if(env.FINAL_SITE_FILES_APPROVED==='true'&&
+      row.purpose!=='QUOTE'&&env.FINAL_SITE_BUCKET?.head){
+      const files=await getFinalWebsiteArtifact(env.DB,env.FINAL_SITE_BUCKET,{
+        id:row.project_id,current_version:row.version
+      });
+      downloadAvailable=files.ok===true&&files.present===true;
+    }
+    return resp({...reviewInfo(row),download_available:downloadAvailable});
+  }
   if(request.headers.get('origin')!==env.PUBLIC_SITE_ORIGIN)
    return resp({error:'Origin not permitted'},403);
   if(!(request.headers.get('content-type')||'').toLowerCase().startsWith('application/json'))
