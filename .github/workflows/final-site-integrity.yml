@@ -1,0 +1,49 @@
+name: MapleWeb customer website SHA-256 integrity
+on:
+  push:
+    branches: [main, mapleweb-r2-zip-integrity-2026-11-20]
+    paths:
+      - 'workers/final-site-files.mjs'
+      - 'tests/**'
+      - '.github/workflows/final-site-integrity.yml'
+  pull_request:
+    paths:
+      - 'workers/final-site-files.mjs'
+      - 'tests/**'
+      - '.github/workflows/final-site-integrity.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check exact completed ZIP bytes against approved SHA-256, not only size
+        run: |
+          node tests/final-site-files.test.mjs
+          node tests/final-site-static-audit.test.mjs
+      - name: Confirm real customer delivery and all approval/payment rules
+        run: |
+          node --disable-warning=ExperimentalWarning tests/full-system-sqlite.test.mjs
+          node tests/customer-review.test.mjs
+          node tests/customer-email.test.mjs
+          node tests/live-stripe.test.mjs
+          node tests/delivery-quality.test.mjs
+          node --disable-warning=ExperimentalWarning tests/retention-history.test.mjs
+      - name: Verify ZIP format independently
+        run: |
+          python3 - <<'PY'
+          import zipfile
+          with zipfile.ZipFile('/tmp/mapleweb-test-final.zip') as z:
+            assert z.testzip() is None
+            assert 'index.html' in z.namelist()
+          print('PASS: SHA-256 guarded ZIP remains standard-compliant')
+          PY
+      - name: Dry-run public and protected Manager Workers
+        run: |
+          npm install --no-audit --no-fund
+          npx wrangler deploy --dry-run --config wrangler.jsonc --outdir ./dist/public
+          npx wrangler deploy --dry-run --config wrangler.manager.jsonc --outdir ./dist/private
