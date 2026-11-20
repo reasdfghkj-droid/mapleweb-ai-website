@@ -3,6 +3,7 @@ import { saveLeadAsProject } from './order-engine.mjs';
 import { processSandboxInvoiceWebhook } from './stripe-invoices.mjs';
 import { processDeveloperJob } from './developer-handoff.mjs';
 import { servePrivatePreview } from './private-previews.mjs';
+import {handleCustomerReview} from './customer-review.mjs';
 // Assets are served from the public directory through Cloudflare Workers Assets.
 const PRICES = Object.freeze([
   { id: 'simple-1-2', label: 'Simple 1–2 pages', min: 500, max: 800 },
@@ -268,8 +269,24 @@ export default {
       if (env.ASSETS && typeof env.ASSETS.fetch === 'function') return env.ASSETS.fetch(req);
       return json({ error: 'Website assets not configured' }, 503);
     }
+    if(url.pathname.startsWith('/review/')){
+      if(env.CUSTOMER_PORTAL_APPROVED!=='true'||!env.DB?.prepare)
+        return json({error:'Customer review portal not activated'},404);
+      if(req.method!=='GET'||!/^\/review\/[A-Za-z0-9_-]{43}$/.test(url.pathname))
+        return json({error:'Review link unavailable'},404);
+      if(!env.ASSETS?.fetch)return json({error:'Customer review page unavailable'},503);
+      const asset=await env.ASSETS.fetch(new Request(new URL('/customer-review.html',req.url)));
+      return new Response(asset.body,{status:asset.status,headers:{
+        'Content-Type':'text/html; charset=utf-8','Cache-Control':'private, no-store',
+        'Referrer-Policy':'no-referrer','X-Robots-Tag':'noindex, nofollow, noarchive',
+        'X-Content-Type-Options':'nosniff',
+        'Content-Security-Policy':"default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'none'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
+      }});
+    }
+    if(url.pathname.startsWith('/api/customer/review/'))
+      return handleCustomerReview(req,env);
     if (url.pathname.startsWith('/preview/')) return servePrivatePreview(req,env);
-    if (req.method === 'GET' && url.pathname === '/health') return json({ status: 'ok', service: 'MapleWeb AI development agents', manager_enabled: Boolean(env.MANAGER_TOKEN), secure_submissions_enabled: submissionsEnabled(env), ai_model_connected: false, developer_handoff_feature_present: true, developer_handoff_enabled: submissionsEnabled(env) && env.AUTO_BUILD_HANDOFF_APPROVED === 'true', developer_builder_type: 'review-only-starter-template', private_preview_feature_present: true, private_preview_sharing_enabled: env.PRIVATE_PREVIEWS_APPROVED === 'true' && Boolean(env.DB), owner_notifications_external_email_enabled: false });
+    if (req.method === 'GET' && url.pathname === '/health') return json({ status: 'ok', service: 'MapleWeb AI development agents', manager_enabled: Boolean(env.MANAGER_TOKEN), secure_submissions_enabled: submissionsEnabled(env), ai_model_connected: false, developer_handoff_feature_present: true, developer_handoff_enabled: submissionsEnabled(env) && env.AUTO_BUILD_HANDOFF_APPROVED === 'true', developer_builder_type: 'review-only-starter-template', private_preview_feature_present: true, private_preview_sharing_enabled: env.PRIVATE_PREVIEWS_APPROVED === 'true' && Boolean(env.DB), owner_notifications_external_email_enabled: false, customer_portal_feature_present:true, customer_portal_enabled:env.CUSTOMER_PORTAL_APPROVED==='true'&&Boolean(env.DB) });
     if (req.method === 'GET' && url.pathname === '/api/prices') return json({ currency: 'CAD', prices: PRICES });
     if (req.method === 'GET' && url.pathname === '/api/config') {
       const publicKey = txt(env.TURNSTILE_SITE_KEY, 300);
@@ -281,6 +298,7 @@ export default {
         manager_enabled: Boolean(env.MANAGER_TOKEN),
         ai_model_connected: false,
         publishing_enabled: false,
+        customer_portal_enabled:env.CUSTOMER_PORTAL_APPROVED==='true'&&Boolean(env.DB),
       });
     }
     if (req.method === 'POST' && url.pathname === '/api/draft') {
