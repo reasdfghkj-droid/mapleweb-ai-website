@@ -125,6 +125,7 @@ export function packageFinalWebsite(files) {
   filenames:entries.map(x=>x.path),compressed:false,published:false,static_audit:staticAudit};
 }
 const hex=buf=>[...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+const sha256Bytes=async bytes=>hex(await crypto.subtle.digest('SHA-256',bytes));
 const privateReady=(env,db)=>env?.FINAL_SITE_FILES_APPROVED==='true'&&
  typeof env?.FINAL_SITE_BUCKET?.put==='function'&&
  typeof env?.FINAL_SITE_BUCKET?.get==='function'&&
@@ -202,10 +203,14 @@ export async function getFinalWebsiteArtifact(db,bucket,project){
   const object=await bucket.head(r.storage_key);
   if(!object||object.size!==r.byte_size)
    return fail('Final R2 package is missing or its size changed');
+  if(object.customMetadata?.sha256_hex && object.customMetadata.sha256_hex!==r.sha256_hex)
+   return fail('Private website metadata SHA-256 does not match approved ZIP');
   return {ok:true,present:true,version:r.version,
    artifact_reference:'final-artifact/'+project.id+'/v'+r.version,
    sha256_hex:r.sha256_hex,byte_size:r.byte_size,file_count:r.file_count,
    uploaded_at:r.created_at,verified_r2_presence:true,
+   metadata_sha256_matches:object.customMetadata?.sha256_hex===r.sha256_hex,
+   full_sha256_content_verified:false,
    published:false,customer_delivered:false};
  }catch{return fail('Final website metadata or storage unavailable');}
 }
@@ -247,15 +252,29 @@ export async function downloadCustomerWebsite(request,env={}){
     row.current_version!==row.version||
     (row.purpose==='DELIVERY_RECEIPT'&&row.customer_approved_version!==row.version))
     return denied();
+  if(!Number.isSafeInteger(row.byte_size)||row.byte_size<100||row.byte_size>7500000||
+     !/^[0-9a-f]{64}$/.test(row.sha256_hex||''))return denied();
   const object=await env.FINAL_SITE_BUCKET.get(row.storage_key);
-  if(!object||object.size!==row.byte_size||!object.body)return denied();
+  if(!object||object.size!==row.byte_size||(!object.body&&typeof object.arrayBuffer!=='function'))
+    return denied();
+  if(object.customMetadata?.sha256_hex && object.customMetadata.sha256_hex!==row.sha256_hex)
+    return denied();
+  // R2 object size alone is not proof of integrity: compare actual zip bytes
+  // to the immutable owner-approved SHA-256 stored in private D1 metadata.
+  let fileBytes;
+  try{
+    fileBytes=typeof object.arrayBuffer==='function'?
+      await object.arrayBuffer():await new Response(object.body).arrayBuffer();
+  }catch{return denied();}
+  if(fileBytes.byteLength!==row.byte_size||
+     (await sha256Bytes(fileBytes))!==row.sha256_hex)return denied();
   const count=await env.DB.prepare(
    'UPDATE customer_review_tokens SET view_count=view_count+1 '+
    'WHERE id=? AND consumed_at IS NULL AND revoked_at IS NULL '+
    'AND expires_at>? AND view_count<15'
   ).bind(row.token_id,now).run();
   if(count?.meta?.changes!==1)return denied();
-  return new Response(object.body,{status:200,headers:{
+  return new Response(fileBytes,{status:200,headers:{
    'Content-Type':'application/zip',
    'Content-Disposition':'attachment; filename="mapleweb-website-v'+row.version+'.zip"',
    'Content-Length':String(row.byte_size),

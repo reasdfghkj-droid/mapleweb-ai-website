@@ -40,11 +40,11 @@ const project={
  quote_approved_version:3,quote_accepted_at:new Date().toISOString(),
  delivered_at:null,invoice_status:null,stripe_invoice_id:null
 };
-let storageKey=null,stored=null,artifact=null,views=0;
+let storageKey=null,stored=null,artifact=null,views=0,metadataOverride=null;
 const r2={
  async put(key,bytes){storageKey=key;stored=new Uint8Array(bytes);return {key,size:bytes.length}},
- async head(key){return key===storageKey?{size:stored.length}:null},
- async get(key){return key===storageKey?{size:stored.length,body:new Blob([stored]).stream()}:null},
+ async head(key){return key===storageKey?{size:stored.length,customMetadata:metadataOverride?{sha256_hex:metadataOverride}:{}}:null},
+ async get(key){return key===storageKey?{size:stored.length,body:new Blob([stored]).stream(),customMetadata:metadataOverride?{sha256_hex:metadataOverride}:{}}:null},
  async delete(key){if(key===storageKey){stored=null;storageKey=null;}}
 };
 const rawToken='A'.repeat(43);
@@ -129,6 +129,24 @@ const publicResponse=await publicWorker.fetch(new Request(endpoint),env);
 assert.equal(publicResponse.status,200);
 assert.equal((await publicResponse.arrayBuffer()).byteLength,stored.length);
 assert.equal(views,2);
+// A same-size private R2 object mutation MUST never reach the customer.
+const original=new Uint8Array(stored);
+stored[110]^=1; // Corrupt one ZIP byte; size and file name are unchanged.
+const changed=await downloadCustomerWebsite(new Request(endpoint),env);
+assert.equal(changed.status,404,'A same-size tampered ZIP must fail SHA-256 validation');
+assert.equal(views,2,'Rejected changed files must not count as a successful download');
+stored=original;
+assert.equal((await downloadCustomerWebsite(new Request(endpoint),env)).status,200);
+assert.equal(views,3);
+// R2 metadata that conflicts with the approved D1 hash is independently rejected.
+metadataOverride='0'.repeat(64);
+assert.equal((await getFinalWebsiteArtifact(db,r2,project)).ok,false);
+assert.equal((await downloadCustomerWebsite(new Request(endpoint),env)).status,404);
+assert.equal(views,3);
+metadataOverride=uploaded.sha256_hex;
+assert.equal((await getFinalWebsiteArtifact(db,r2,project)).metadata_sha256_matches,true);
+assert.equal((await downloadCustomerWebsite(new Request(endpoint),env)).status,200);
+assert.equal(views,4);
 assert.equal((await downloadCustomerWebsite(new Request('https://site.example/api/customer/review/'+projectId+'/download'),env)).status,404);
 assert.equal((await downloadCustomerWebsite(new Request(endpoint,{method:'POST'}),env)).status,405);
 const publicCfg=JSON.parse(fs.readFileSync('wrangler.jsonc','utf8'));
