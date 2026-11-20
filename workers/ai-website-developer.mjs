@@ -3,7 +3,8 @@
  *
  * The AI does NOT return executable source, scripts, CSS, forms, links, price
  * commitments or deployed sites. Its short plain-text copy is rendered using
- * fixed escaped templates. No PII is sent: only consented website requirements.
+ * fixed escaped templates. Only consented website requirements are sent, not
+ * separately stored customer contact records.
  *
  * FAIL CLOSED for cost: both agent-approval flags and a real AI binding are
  * required; disabled by default. The separate customer contact fields are
