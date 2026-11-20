@@ -10,6 +10,7 @@ import { createPrivatePreviewShare,revokePrivatePreviewShares } from './private-
 import { listOwnerNotifications,markNotificationRead } from './owner-inbox.mjs';
 import { abandonedDeletionEligibility,deleteAbandonedRequest } from './order-retention.mjs';
 import { getDeveloperJobStatus,getPrivateStarterBundle,processDeveloperJob } from './developer-handoff.mjs';
+import {listDeveloperQueue,markStalledDeveloperJob,retryFailedTemplateOnce,processApprovedTemplateBatch} from './agent-operations.mjs';
 import {
   validId,commitOwnerTransition,createOwnerAIDraft,invoiceAssessment
 } from './order-engine.mjs';
@@ -37,6 +38,8 @@ export async function handleOwnerRequest(request,env={}) {
       service:'MapleWeb AI Private Website Manager',connected_storage:true,
       payments_enabled:false,public_customer_publication_enabled:false,
       ai_drafts_enabled:env.AI_DRAFTS_APPROVED==='true'&&Boolean(env.AI),
+      ai_developer_enabled:env.AI_DEVELOPER_APPROVED==='true'&&env.AI_DRAFTS_APPROVED==='true'&&Boolean(env.AI),
+      auto_template_batch_enabled:env.AUTO_AGENT_BATCH_APPROVED==='true'&&env.AUTO_BUILD_HANDOFF_APPROVED==='true',
       manager_only:true
     });
     if(request.method==='GET'&&path==='/api/manager/projects'){
@@ -44,6 +47,17 @@ export async function handleOwnerRequest(request,env={}) {
         'SELECT p.id,p.created_at,p.updated_at,p.status,p.current_version,p.generator,p.invoice_status,s.name,s.email FROM projects p JOIN submissions s ON s.id=p.submission_id ORDER BY p.created_at DESC LIMIT 50'
       ).all();
       return json({projects:results?.results||[]});
+    }
+    if(request.method==='GET'&&path==='/api/manager/build-queue'){
+      const result=await listDeveloperQueue(env.DB);
+      return json(result,result.ok?200:503);
+    }
+    if(request.method==='POST'&&path==='/api/manager/run-template-batch'){
+      const payload=await parseBody(request,800);
+      if(payload?.confirm!=='RUN_APPROVED_PRIVATE_TEMPLATE_BATCH')
+        return error('Explicit owner consent required for private processing',409);
+      const result=await processApprovedTemplateBatch(env,Math.min(3,payload.limit||2));
+      return json(result,result.ok?200:409);
     }
     if(request.method==='GET'&&path==='/api/manager/notifications'){
       return json(await listOwnerNotifications(env.DB));
@@ -55,7 +69,7 @@ export async function handleOwnerRequest(request,env={}) {
       const result=await markNotificationRead(env.DB,readMatch[1]);
       return json(result,result.ok?200:400);
     }
-    const match=/^\/api\/manager\/projects\/([0-9a-f-]{36})(?:\/(transition|improve-draft|invoice-assessment|approve-invoice|draft-test-invoice|bundle|preview-share|preview-revoke|preview-list|delete-request|builder-status|builder-output|process-build))?$/.exec(path);
+    const match=/^\/api\/manager\/projects\/([0-9a-f-]{36})(?:\/(transition|improve-draft|invoice-assessment|approve-invoice|draft-test-invoice|bundle|preview-share|preview-revoke|preview-list|delete-request|builder-status|builder-output|process-build|mark-stalled-build|retry-template))?$/.exec(path);
     if(!match||!validId(match[1]))return error('Not found',404);
     const id=match[1],operation=match[2]||'';
     const row=await rowOf(env.DB,id);
@@ -87,6 +101,20 @@ export async function handleOwnerRequest(request,env={}) {
     if(request.method==='GET'&&operation==='invoice-assessment')
       return json({project_reference:id,assessment:invoiceAssessment(row)});
     if(request.method!=='POST')return error('Method not allowed',405);
+    if(operation==='mark-stalled-build'){
+      const payload=await parseBody(request,1200);
+      if(payload?.confirm!=='MARK_STALLED_JOB_FAILED'||payload?.expectedRowVersion!==row.row_version)
+        return error('Confirm stalled-job review and exact project version',409);
+      const result=await markStalledDeveloperJob(env.DB,id);
+      return json(result,result.ok?200:409);
+    }
+    if(operation==='retry-template'){
+      const payload=await parseBody(request,1200);
+      if(payload?.confirm!=='RETRY_FAILED_TEMPLATE_ONCE'||payload?.expectedRowVersion!==row.row_version)
+        return error('Confirm one manual fixed-template retry and exact project version',409);
+      const result=await retryFailedTemplateOnce(env.DB,id);
+      return json(result,result.ok?200:409);
+    }
     if(operation==='process-build'){
       const payload=await parseBody(request,1500);
       if(payload?.confirm!=='PROCESS_PRIVATE_STARTER_ONLY' ||
