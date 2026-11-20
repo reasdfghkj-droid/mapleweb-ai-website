@@ -6,6 +6,7 @@
 import { ownerAuthed, parseBody } from './mapleweb-agents.mjs';
 import { createSandboxInvoiceDraft } from './stripe-invoices.mjs';
 import {prepareOwnerQuotePack} from '../billing/owner-quote-pack.mjs';
+import {recordDeliveryQualityReview,getDeliveryQualityReadiness,preparePrivateHandoverSummary} from './delivery-quality.mjs';
 import { buildWebsiteStarterBundle } from './site-bundle.mjs';
 import { createPrivatePreviewShare,revokePrivatePreviewShares } from './private-previews.mjs';
 import { listOwnerNotifications,markNotificationRead } from './owner-inbox.mjs';
@@ -70,7 +71,7 @@ export async function handleOwnerRequest(request,env={}) {
       const result=await markNotificationRead(env.DB,readMatch[1]);
       return json(result,result.ok?200:400);
     }
-    const match=/^\/api\/manager\/projects\/([0-9a-f-]{36})(?:\/(transition|improve-draft|invoice-assessment|approve-invoice|draft-test-invoice|bundle|preview-share|preview-revoke|preview-list|delete-request|builder-status|builder-output|process-build|mark-stalled-build|retry-template|quote-pack))?$/.exec(path);
+    const match=/^\/api\/manager\/projects\/([0-9a-f-]{36})(?:\/(transition|improve-draft|invoice-assessment|approve-invoice|draft-test-invoice|bundle|preview-share|preview-revoke|preview-list|delete-request|builder-status|builder-output|process-build|mark-stalled-build|retry-template|quote-pack|delivery-quality|delivery-review|handover-summary))?$/.exec(path);
     if(!match||!validId(match[1]))return error('Not found',404);
     const id=match[1],operation=match[2]||'';
     const row=await rowOf(env.DB,id);
@@ -80,7 +81,13 @@ export async function handleOwnerRequest(request,env={}) {
       const parsed={...row};
       try{parsed.answers=JSON.parse(row.answers_json);}catch{parsed.answers={};}
       delete parsed.answers_json;
-      return json({project:parsed,invoice_eligibility:invoiceAssessment(row),abandoned_delete_eligibility:abandonedDeletionEligibility(row),developer_build:await getDeveloperJobStatus(env.DB,id)});
+      return json({project:parsed,invoice_eligibility:invoiceAssessment(row),abandoned_delete_eligibility:abandonedDeletionEligibility(row),developer_build:await getDeveloperJobStatus(env.DB,id),delivery_quality:await getDeliveryQualityReadiness(env.DB,row)});
+    }
+    if(request.method==='GET'&&operation==='delivery-quality')
+      return json(await getDeliveryQualityReadiness(env.DB,row));
+    if(request.method==='GET'&&operation==='handover-summary'){
+      const result=await preparePrivateHandoverSummary(env.DB,row);
+      return json(result,result.ok?200:409);
     }
     if(request.method==='GET'&&operation==='quote-pack'){
       let answers;
@@ -112,6 +119,12 @@ export async function handleOwnerRequest(request,env={}) {
     if(request.method==='GET'&&operation==='invoice-assessment')
       return json({project_reference:id,assessment:invoiceAssessment(row)});
     if(request.method!=='POST')return error('Method not allowed',405);
+    if(operation==='delivery-review'){
+      const payload=await parseBody(request,4500);
+      if(!payload||typeof payload!=='object')return error('Invalid final website QA request');
+      const result=await recordDeliveryQualityReview(env.DB,row,payload);
+      return json(result,result.ok?200:409);
+    }
     if(operation==='mark-stalled-build'){
       const payload=await parseBody(request,1200);
       if(payload?.confirm!=='MARK_STALLED_JOB_FAILED'||payload?.expectedRowVersion!==row.row_version)
@@ -166,6 +179,12 @@ export async function handleOwnerRequest(request,env={}) {
       if(!payload||typeof payload!=='object')return error('Invalid request');
       if(!Number.isSafeInteger(payload.expectedRowVersion)||payload.expectedRowVersion!==row.row_version)
         return error('Project has changed. Reload before proceeding.',409);
+      if(payload.action==='DELIVERED'){
+        const ready=await getDeliveryQualityReadiness(env.DB,row);
+        if(!ready.ok||!ready.ready||ready.version!==row.current_version)
+          return json({error:'Final website delivery QA has not been approved for this version',
+            blockers:ready.blockers||[ready.reason]},409);
+      }
       const outcome=await commitOwnerTransition(env.DB,row,payload.action,payload);
       return json(outcome,outcome.ok?200:409);
     }
@@ -183,6 +202,10 @@ export async function handleOwnerRequest(request,env={}) {
       if(payload?.confirm!=='CREATE_STRIPE_SANDBOX_DRAFT_ONLY'||
          payload?.expectedRowVersion!==row.row_version)
         return error('Explicit sandbox confirmation and current project version required',409);
+      const qa=await getDeliveryQualityReadiness(env.DB,row);
+      if(!qa.ok||!qa.ready)
+        return json({error:'Final website QA record required before even a test invoice draft',
+          blockers:[qa.reason]},409);
       const outcome=await createSandboxInvoiceDraft(env.DB,row,env,fetch);
       return json(outcome,outcome.ok?200:409);
     }
@@ -192,6 +215,10 @@ export async function handleOwnerRequest(request,env={}) {
          payload?.expectedRowVersion!==row.row_version)
         return error('Explicit approval and current row version required',409);
       if(row.owner_approved_invoice===1)return error('Invoice was already approved',409);
+      const qa=await getDeliveryQualityReadiness(env.DB,row);
+      if(!qa.ok||!qa.ready)
+        return json({error:'Final website QA record required before invoice approval',
+          blockers:[qa.reason]},409);
       const assessment=invoiceAssessment({...row,owner_approved_invoice:1});
       if(!assessment.eligibleForOwnerDraftInvoice)
         return json({error:'Project is not eligible for post-delivery invoicing',blockers:assessment.blockers},409);
