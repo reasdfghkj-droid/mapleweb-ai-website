@@ -73,6 +73,11 @@ async function load(id){
   try{
     const data=await api('/api/manager/projects/'+id);
     current=data.project;
+    const artifact=data.final_artifact||{};
+    $('finalSiteStatus').textContent=artifact.present
+      ?'Private final website v'+artifact.version+' · '+artifact.file_count+
+       ' files · '+artifact.byte_size+' bytes. Owner QA and customer approval still required.'
+      :'Final website ZIP is not available yet ('+(artifact.error||'no finished files recorded')+').';
     $('reviewUrl').value='';
     $('reviewStatus').textContent='Create a new private quote or website review link for this project, after its conditions are met.';
     const qa=data.delivery_quality||{};
@@ -307,6 +312,43 @@ $('downloadQuote').addEventListener('click',async()=>{
     document.body.append(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),1000);
     notice('Private quote draft downloaded. Review taxes, price, services and customer acceptance before sending.');
+  }catch(e){notice(e.message,true);}
+});
+$('uploadFinalSite').addEventListener('click',async()=>{
+  if(!current)return;
+  const list=[...$('finishedSiteFiles').files];
+  if(!list.length){notice('Select finished website files first.',true);return;}
+  if(list.length>60||list.some(f=>f.size>2000000)||
+     list.reduce((sum,f)=>sum+f.size,0)>6000000){
+    notice('Too many files or final website size exceeds secure upload limits.',true);return;
+  }
+  if(!window.confirm('Are these the REAL COMPLETED and tested website files? This saves a private ZIP but does not publish, deliver, or charge anyone.'))return;
+  const values=[];
+  try{
+    const paths=list.map(f=>f.webkitRelativePath||f.name);
+    const commonRoot=paths.every(p=>p.includes('/')&&p.split('/')[0]===paths[0].split('/')[0]);
+    for(let i=0;i<list.length;i++){
+      const f=list[i];const path=commonRoot?paths[i].split('/').slice(1).join('/'):paths[i];
+      if(/\.(html|css|js|json|txt|svg)$/i.test(path))
+        values.push({path,content:await f.text()});
+      else{
+        const bytes=new Uint8Array(await f.arrayBuffer());let encoded='';
+        for(let p=0;p<bytes.length;p+=8192)
+          encoded+=String.fromCharCode(...bytes.subarray(p,p+8192));
+        values.push({path,data_base64:btoa(encoded)});
+      }
+    }
+    const data=await api('/api/manager/projects/'+current.id+'/final-upload',{
+      confirm:'UPLOAD_VERIFIED_FINISHED_WEBSITE',
+      currentVersion:current.current_version,expectedRowVersion:current.row_version,
+      files:values
+    });
+    if(!data.ok)throw Error(data.error||'Final website ZIP was not saved');
+    $('qaFinalArtifact').value=data.private_artifact_reference;
+    $('finishedSiteFiles').value='';
+    notice('Completed website ZIP stored privately for v'+data.version+
+      '. Record the independent quality review, then request customer approval.');
+    await load(current.id);
   }catch(e){notice(e.message,true);}
 });
 $('saveDeliveryQA').addEventListener('click',async()=>{
