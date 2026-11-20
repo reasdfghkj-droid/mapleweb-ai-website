@@ -1,0 +1,59 @@
+name: Verify protected customer and payment features live
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'workers/**'
+      - 'wrangler.jsonc'
+      - 'public/customer-review*'
+      - '.github/workflows/verify-private-services-live.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm Cloudflare published new code but sensitive integrations stay disabled
+        run: |
+          python3 - <<'PY'
+          import json,time,urllib.request,urllib.error
+          base='https://mapleweb-ai-website.reasdfghkj.workers.dev'
+          def request(path,method='GET'):
+            req=urllib.request.Request(base+path,data=b'{}' if method=='POST' else None,
+                headers={'User-Agent':'MapleWeb-Safe-Service-Release',
+                         'Content-Type':'application/json'})
+            try:
+              with urllib.request.urlopen(req,timeout=20) as r:
+                return r.status,r.read(100000).decode('utf-8','replace')
+            except urllib.error.HTTPError as e:
+              return e.code,e.read(100000).decode('utf-8','replace')
+          ready=False
+          for i in range(20):
+            status,health=request('/health')
+            try:data=json.loads(health)
+            except:data={}
+            ready=status==200 and data.get('customer_portal_feature_present') is True and data.get('customer_portal_enabled') is False
+            print('Backend release check',i+1,'HTTP',status,'new_code',ready,flush=True)
+            if ready:break
+            if i<19:time.sleep(8)
+          if not ready:raise SystemExit('New customer portal Worker has NOT been confirmed deployed')
+          status,config=request('/api/config')
+          assert status==200
+          config=json.loads(config)
+          assert config.get('submissions_enabled') is False
+          assert config.get('builder_handoff_enabled') is False
+          assert config.get('customer_portal_enabled') is False
+          assert config.get('live_stripe_invoice_enabled') is False
+          status,review=request('/review/'+'A'*43)
+          assert status==404,'Private review MUST stay off'
+          status,invoice=request('/api/stripe/live-webhook',method='POST')
+          assert status==503,'Live Stripe webhook MUST stay off'
+          status,manager=request('/api/manager/live-payouts')
+          assert status==404,'Public Manager MUST stay inaccessible'
+          status,price=request('/api/prices')
+          assert status==200 and len(json.loads(price).get('prices',[]))==6
+          status,home=request('/')
+          assert status==200 and 'No upfront deposit' in home
+          print('PASS private customer review and live bank/payment APIs deployed but inactive; customer website and CAD prices remain live')
+          PY
