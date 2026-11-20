@@ -9,7 +9,7 @@
 const text=(v,max=250)=>typeof v==='string'?
  v.replace(/[\u0000-\u001f\u007f]/g,' ').replace(/\s+/g,' ').trim().slice(0,max):'';
 const REG={
- restaurant:/\b(restauran(?:t|ts)|cafe|café|coffee|bakery|bistro|catering|food|pizza|diner)\b/i,
+ restaurant:/(?:\b(restauran(?:t|ts)|cafe|coffee|bakery|bistro|catering|food|pizza|diner)\b|\bcafé)/i,
  wellness:/\b(salon|barber|spa|beauty|massage|wellness|nail|hair|fitness|gym|yoga)\b/i,
  retail:/\b(shop|store|retail|boutique|product|clothing|merchandise|ecommerce|e-commerce)\b/i,
  professional:/\b(account|law|legal|consult|advisor|finance|bookkeep|clinic|dentist|realtor|real estate|insurance)\b/i,
