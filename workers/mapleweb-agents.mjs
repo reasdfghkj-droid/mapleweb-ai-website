@@ -1,6 +1,7 @@
 /** MapleWeb AI development Worker — no publishing or paid model calls. */
 import { saveLeadAsProject } from './order-engine.mjs';
 import { processSandboxInvoiceWebhook } from './stripe-invoices.mjs';
+import {processLiveStripeWebhook} from './stripe-live.mjs';
 import { processDeveloperJob } from './developer-handoff.mjs';
 import { servePrivatePreview } from './private-previews.mjs';
 import {handleCustomerReview} from './customer-review.mjs';
@@ -298,6 +299,7 @@ export default {
         manager_enabled: Boolean(env.MANAGER_TOKEN),
         ai_model_connected: false,
         publishing_enabled: false,
+        live_stripe_invoice_enabled:false,
         customer_portal_enabled:env.CUSTOMER_PORTAL_APPROVED==='true'&&Boolean(env.DB),
       });
     }
@@ -311,6 +313,8 @@ export default {
 
     if (req.method === 'POST' && url.pathname === '/api/chat') { try { return json(chat(await parseBody(req))); } catch (e) { return json({ error: e.message }, e.status || 400); } }
     if (req.method === 'POST' && url.pathname === '/api/submit') return submit(req, env, fetch, ctx);
+    if(req.method==='POST'&&url.pathname==='/api/stripe/live-webhook')
+      return processLiveStripeWebhook(req,env,fetch);
     if (req.method === 'POST' && url.pathname === '/api/stripe/webhook')
       return processSandboxInvoiceWebhook(req, env, fetch);
     if (url.pathname.startsWith('/api/manager/')) {

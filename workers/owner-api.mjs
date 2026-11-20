@@ -5,6 +5,7 @@
  */
 import { ownerAuthed, parseBody } from './mapleweb-agents.mjs';
 import { createSandboxInvoiceDraft } from './stripe-invoices.mjs';
+import {checkLiveStripeAccount,getLivePayoutSummary,createLiveInvoiceDraft,sendApprovedLiveInvoice} from './stripe-live.mjs';
 import {prepareOwnerQuotePack} from '../billing/owner-quote-pack.mjs';
 import {recordDeliveryQualityReview,getDeliveryQualityReadiness,preparePrivateHandoverSummary} from './delivery-quality.mjs';
 import { buildWebsiteStarterBundle } from './site-bundle.mjs';
@@ -51,6 +52,14 @@ export async function handleOwnerRequest(request,env={}) {
       ).all();
       return json({projects:results?.results||[]});
     }
+    if(request.method==='GET'&&path==='/api/manager/live-stripe-status'){
+      const result=await checkLiveStripeAccount(env,fetch);
+      return json(result,result.ok?200:503);
+    }
+    if(request.method==='GET'&&path==='/api/manager/live-payouts'){
+      const result=await getLivePayoutSummary(env,fetch);
+      return json(result,result.ok?200:503);
+    }
     if(request.method==='GET'&&path==='/api/manager/build-queue'){
       const result=await listDeveloperQueue(env.DB);
       return json(result,result.ok?200:503);
@@ -72,7 +81,7 @@ export async function handleOwnerRequest(request,env={}) {
       const result=await markNotificationRead(env.DB,readMatch[1]);
       return json(result,result.ok?200:400);
     }
-    const match=/^\/api\/manager\/projects\/([0-9a-f-]{36})(?:\/(transition|improve-draft|invoice-assessment|approve-invoice|draft-test-invoice|bundle|preview-share|preview-revoke|preview-list|delete-request|builder-status|builder-output|process-build|mark-stalled-build|retry-template|quote-pack|delivery-quality|delivery-review|handover-summary|issue-review|review-links|revoke-review-links))?$/.exec(path);
+    const match=/^\/api\/manager\/projects\/([0-9a-f-]{36})(?:\/(transition|improve-draft|invoice-assessment|approve-invoice|draft-test-invoice|bundle|preview-share|preview-revoke|preview-list|delete-request|builder-status|builder-output|process-build|mark-stalled-build|retry-template|quote-pack|delivery-quality|delivery-review|handover-summary|issue-review|review-links|revoke-review-links|live-draft|live-send))?$/.exec(path);
     if(!match||!validId(match[1]))return error('Not found',404);
     const id=match[1],operation=match[2]||'';
     const row=await rowOf(env.DB,id);
@@ -223,6 +232,23 @@ export async function handleOwnerRequest(request,env={}) {
       // consented customer answers.
       const answers=JSON.parse(row.answers_json);
       const result=await createOwnerAIDraft(env.DB,row,answers,env);
+      return json(result,result.ok?200:409);
+    }
+    if(operation==='live-draft'||operation==='live-send'){
+      const payload=await parseBody(request,1500);
+      const required=operation==='live-draft'?'CREATE_POST_DELIVERY_LIVE_INVOICE_DRAFT':'SEND_POST_DELIVERY_LIVE_INVOICE';
+      if(payload?.confirm!==required||payload?.expectedRowVersion!==row.row_version)
+        return error('Current project version and explicit live invoice authorization are required',409);
+      const qa=await getDeliveryQualityReadiness(env.DB,row);
+      if(!qa.ready||qa.version!==row.current_version)
+        return json({error:'Final website QA for this delivered version is required'},409);
+      if(env.CUSTOMER_PORTAL_APPROVED==='true'){
+        const receipt=await receiptRecorded(env.DB,row);
+        if(!receipt.ok)return json({error:'Verified customer handover receipt is required'},409);
+      }
+      const result=operation==='live-draft'?
+        await createLiveInvoiceDraft(env.DB,row,env,fetch):
+        await sendApprovedLiveInvoice(env.DB,row,env,fetch);
       return json(result,result.ok?200:409);
     }
     if(operation==='draft-test-invoice'){
