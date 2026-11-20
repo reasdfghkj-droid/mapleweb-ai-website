@@ -1,0 +1,47 @@
+name: MapleWeb protected live Stripe integration tests
+on:
+  push:
+    branches: [main, mapleweb-live-stripe-invoicing-2026-11-19]
+    paths:
+      - 'workers/**'
+      - 'manager-ui/**'
+      - 'tests/**'
+      - 'wrangler.jsonc'
+      - 'wrangler.manager.jsonc'
+      - '.github/workflows/live-stripe-safety.yml'
+  pull_request:
+    paths:
+      - 'workers/**'
+      - 'manager-ui/**'
+      - 'tests/**'
+      - 'wrangler.jsonc'
+      - 'wrangler.manager.jsonc'
+      - '.github/workflows/live-stripe-safety.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test every sales, customer approval, delivery and Stripe safety control
+        run: |
+          node tests/live-stripe.test.mjs
+          node tests/customer-review.test.mjs
+          node tests/delivery-quality.test.mjs
+          node tests/owner-quote-pack.test.mjs
+          node tests/post-delivery.test.mjs
+          node tests/automation-phase2.test.mjs
+          node tests/sales-studio.test.mjs
+          node tests/scope-pricing.test.mjs
+          node tests/chat-developer-handoff.test.mjs
+          node tests/agent-operations.test.mjs
+          node tests/private-preview-inbox.test.mjs
+      - name: Cloudflare Workers dry-run only - no paid Stripe or AI calls
+        run: |
+          npm install --no-audit --no-fund
+          npx wrangler deploy --dry-run --config wrangler.jsonc --outdir ./dist/public
+          npx wrangler deploy --dry-run --config wrangler.manager.jsonc --outdir ./dist/private
