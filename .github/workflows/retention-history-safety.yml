@@ -1,0 +1,37 @@
+name: MapleWeb safe customer retention and history
+on:
+  push:
+    branches: [main, mapleweb-retention-safety-2026-11-19]
+    paths:
+      - 'workers/order-retention.mjs'
+      - 'tests/**'
+      - 'migrations/**'
+      - '.github/workflows/retention-history-safety.yml'
+  pull_request:
+    paths:
+      - 'workers/order-retention.mjs'
+      - 'tests/**'
+      - 'migrations/**'
+      - '.github/workflows/retention-history-safety.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Actual SQLite history protection, no orphan private finished sites
+        run: node --disable-warning=ExperimentalWarning tests/retention-history.test.mjs
+      - name: Entire customer journey and privacy security regressions
+        run: |
+          node --disable-warning=ExperimentalWarning tests/full-system-sqlite.test.mjs
+          node tests/private-preview-inbox.test.mjs
+          node tests/automation-phase2.test.mjs
+          node tests/delivery-quality.test.mjs
+          node tests/customer-review.test.mjs
+          node tests/customer-email.test.mjs
+          node tests/final-site-files.test.mjs
+          node tests/live-stripe.test.mjs
