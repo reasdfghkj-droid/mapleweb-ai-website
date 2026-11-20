@@ -106,6 +106,15 @@
 <h3>After delivery: payments</h3><p id="invoiceAssessment" class="muted">Select a project to check eligibility.</p>
 <div class="buttons"><button type="button" id="approveInvoice" class="secondary">Approve post-delivery invoice review</button>
 <button type="button" id="sandboxInvoice" class="secondary">Create Stripe sandbox draft (test only)</button></div>
+<h3>Live Stripe payment and Canadian bank settlement</h3>
+<p class="muted">Only available after you activate a verified live Stripe account, add your bank securely in Stripe, review taxes, complete actual website delivery and approve the invoice. Sending a live invoice emails a real payment request to the customer.</p>
+<div class="buttons"><button id="stripeLiveCheck" class="secondary" type="button">Check live Stripe and payouts readiness</button>
+<button id="stripeLiveDraft" class="secondary" type="button">Create LIVE post-delivery invoice draft</button>
+<button id="stripeLiveSend" class="secondary" type="button">Send approved LIVE invoice to customer</button>
+<button id="stripePayouts" class="secondary" type="button">View Stripe payout statuses</button></div>
+<p id="stripeLiveStatus" role="status" class="muted">Live Stripe account has not been verified in this Manager session.</p>
+<label for="stripePaymentLink">Stripe-hosted invoice page (only after successful sending)</label>
+<input id="stripePaymentLink" type="text" readonly autocomplete="off" placeholder="No Stripe invoice link">
 <p id="actionFeedback" role="status" aria-live="polite"></p>
 </section>
 </div>
