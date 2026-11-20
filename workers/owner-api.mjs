@@ -92,7 +92,7 @@ export async function handleOwnerRequest(request,env={}) {
       const parsed={...row};
       try{parsed.answers=JSON.parse(row.answers_json);}catch{parsed.answers={};}
       delete parsed.answers_json;
-      return json({project:parsed,invoice_eligibility:invoiceAssessment(row),abandoned_delete_eligibility:abandonedDeletionEligibility(row),developer_build:await getDeveloperJobStatus(env.DB,id),delivery_quality:await getDeliveryQualityReadiness(env.DB,row)});
+      return json({project:parsed,invoice_eligibility:invoiceAssessment(row),abandoned_delete_eligibility:abandonedDeletionEligibility(row),developer_build:await getDeveloperJobStatus(env.DB,id),delivery_quality:await getDeliveryQualityReadiness(env.DB,row),final_artifact:await getFinalWebsiteArtifact(env.DB,env.FINAL_SITE_BUCKET,row)});
     }
     if(request.method==='GET'&&operation==='final-artifact'){
       const result=await getFinalWebsiteArtifact(env.DB,env.FINAL_SITE_BUCKET,row);
