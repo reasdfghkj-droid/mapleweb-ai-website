@@ -1,0 +1,84 @@
+name: MapleWeb Phase 11 secure review email
+on:
+  push:
+    branches: [main, mapleweb-secure-customer-email-2026-11-19]
+    paths:
+      - 'workers/**'
+      - 'manager-ui/**'
+      - 'migrations/**'
+      - 'tests/**'
+      - 'scripts/activation-preflight.mjs'
+      - '.github/workflows/customer-email-safety.yml'
+  pull_request:
+    paths:
+      - 'workers/**'
+      - 'manager-ui/**'
+      - 'migrations/**'
+      - 'tests/**'
+      - 'scripts/activation-preflight.mjs'
+      - '.github/workflows/customer-email-safety.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test customer emails, signed review links, deliveries and payments
+        run: |
+          node tests/customer-email.test.mjs
+          node tests/customer-review.test.mjs
+          node tests/final-site-files.test.mjs
+          node tests/live-stripe.test.mjs
+          node tests/delivery-quality.test.mjs
+          node tests/owner-quote-pack.test.mjs
+          node tests/automation-phase2.test.mjs
+          node tests/agent-operations.test.mjs
+          node tests/private-preview-inbox.test.mjs
+          node tests/chat-developer-handoff.test.mjs
+          node tests/scope-pricing.test.mjs
+          node tests/sales-studio.test.mjs
+          node tests/post-delivery.test.mjs
+          node tests/activation-preflight.test.mjs
+      - name: Check all nine migrations and single-send email ledger uniqueness
+        run: |
+          python3 - <<'PY'
+          import sqlite3,pathlib,uuid
+          db=sqlite3.connect(':memory:')
+          db.execute('PRAGMA foreign_keys=ON')
+          for i,name in enumerate([
+            '0001_secure_sales_submissions.sql',
+            '0002_orders_projects_and_billing.sql',
+            '0003_private_previews_notifications.sql',
+            '0004_developer_handoff_queue.sql',
+            '0005_agent_recovery.sql',
+            '0006_delivery_quality_reviews.sql',
+            '0007_customer_review_tokens.sql',
+            '0008_final_website_artifacts.sql',
+            '0009_customer_review_email.sql'
+          ],1):
+            db.executescript(pathlib.Path('migrations',name).read_text())
+            print('PASS',i,name)
+          sid,pid,tok=str(uuid.uuid4()),str(uuid.uuid4()),str(uuid.uuid4())
+          at='2026-11-19T19:00:00Z'
+          db.execute('INSERT INTO submissions(id,created_at,name,email,answers_json,status) VALUES (?,?,?,?,?,?)',(sid,at,'Sample','dummy@example.org','{}','NEW'))
+          db.execute('INSERT INTO projects(id,submission_id,created_at,updated_at,draft_html) VALUES (?,?,?,?,?)',(pid,sid,at,at,'<html></html>'))
+          db.execute('INSERT INTO customer_review_tokens(id,project_id,version,purpose,token_hash,created_at,expires_at) VALUES (?,?,?,?,?,?,?)',(tok,pid,1,'QUOTE','f'*64,at,'2027-11-19T19:00:00Z'))
+          vals=(tok,pid,at,at,'RESERVED','a'*64,'review-'+tok)
+          db.execute('INSERT INTO customer_review_email_operations(token_id,project_id,created_at,updated_at,status,recipient_email_hash,idempotency_key) VALUES (?,?,?,?,?,?,?)',vals)
+          try:
+            db.execute('INSERT INTO customer_review_email_operations(token_id,project_id,created_at,updated_at,status,recipient_email_hash,idempotency_key) VALUES (?,?,?,?,?,?,?)',vals)
+            raise AssertionError('Duplicate email operation allowed')
+          except sqlite3.IntegrityError:print('PASS one operation per review token')
+          db.execute('DELETE FROM submissions WHERE id=?',(sid,))
+          assert db.execute('SELECT COUNT(*) FROM customer_review_email_operations').fetchone()[0]==0
+          print('PASS abandoned project customer email metadata deletes by cascade')
+          PY
+      - name: Build both Cloudflare Workers without deployment
+        run: |
+          npm install --no-audit --no-fund
+          npx wrangler deploy --dry-run --config wrangler.jsonc --outdir ./dist/public
+          npx wrangler deploy --dry-run --config wrangler.manager.jsonc --outdir ./dist/private

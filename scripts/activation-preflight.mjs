@@ -68,7 +68,7 @@ check('manager_access','Private Manager authentication configured',
  present('MANAGER_TOKEN')&&present('CLOUDFLARE_ACCESS_VERIFIED'),
  'Protect Manager with Cloudflare Access and an independent encrypted 32+ character token');
 check('customer_contact','Customer notification provider configured',
- present('VERIFIED_CUSTOMER_EMAIL_FROM')&&present('CUSTOMER_EMAIL_PROVIDER_KEY'),
+ present('CUSTOMER_EMAIL_FROM')&&present('RESEND_API_KEY')&&present('CUSTOMER_EMAIL_VERIFIED_DOMAIN'),
  'Verify an approved customer email sending domain and secure the provider credentials');
 check('stripe_live','Live Stripe credentials and account verification available',
  present('STRIPE_LIVE_SECRET_KEY')&&present('STRIPE_LIVE_ACCOUNT_ID')&&present('STRIPE_LIVE_WEBHOOK_SECRET'),

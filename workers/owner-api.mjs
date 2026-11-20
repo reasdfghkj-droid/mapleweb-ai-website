@@ -12,6 +12,7 @@ import { buildWebsiteStarterBundle } from './site-bundle.mjs';
 import { createPrivatePreviewShare,revokePrivatePreviewShares } from './private-previews.mjs';
 import {issueCustomerReviewLink,listCustomerReviewLinks,revokeCustomerReviewLinks,receiptRecorded} from './customer-review.mjs';
 import {uploadFinalWebsiteFiles,getFinalWebsiteArtifact} from './final-site-files.mjs';
+import {sendCustomerReviewEmail} from './customer-email.mjs';
 import { listOwnerNotifications,markNotificationRead } from './owner-inbox.mjs';
 import { abandonedDeletionEligibility,deleteAbandonedRequest } from './order-retention.mjs';
 import { getDeveloperJobStatus,getPrivateStarterBundle,processDeveloperJob } from './developer-handoff.mjs';
@@ -82,7 +83,7 @@ export async function handleOwnerRequest(request,env={}) {
       const result=await markNotificationRead(env.DB,readMatch[1]);
       return json(result,result.ok?200:400);
     }
-    const match=/^\/api\/manager\/projects\/([0-9a-f-]{36})(?:\/(transition|improve-draft|invoice-assessment|approve-invoice|draft-test-invoice|bundle|preview-share|preview-revoke|preview-list|delete-request|builder-status|builder-output|process-build|mark-stalled-build|retry-template|quote-pack|delivery-quality|delivery-review|handover-summary|issue-review|review-links|revoke-review-links|live-draft|live-send|final-upload|final-artifact))?$/.exec(path);
+    const match=/^\/api\/manager\/projects\/([0-9a-f-]{36})(?:\/(transition|improve-draft|invoice-assessment|approve-invoice|draft-test-invoice|bundle|preview-share|preview-revoke|preview-list|delete-request|builder-status|builder-output|process-build|mark-stalled-build|retry-template|quote-pack|delivery-quality|delivery-review|handover-summary|issue-review|review-links|revoke-review-links|live-draft|live-send|final-upload|final-artifact|send-review-email))?$/.exec(path);
     if(!match||!validId(match[1]))return error('Not found',404);
     const id=match[1],operation=match[2]||'';
     const row=await rowOf(env.DB,id);
@@ -141,6 +142,11 @@ export async function handleOwnerRequest(request,env={}) {
     if(operation==='final-upload'){
       const payload=await parseBody(request,9000000);
       const result=await uploadFinalWebsiteFiles(env.DB,row,env,payload);
+      return json(result,result.ok?200:409);
+    }
+    if(operation==='send-review-email'){
+      const payload=await parseBody(request,1600);
+      const result=await sendCustomerReviewEmail(env.DB,row,env,payload,fetch);
       return json(result,result.ok?200:409);
     }
     if(operation==='issue-review'){
