@@ -87,7 +87,7 @@ assert.equal(enhanced.payment_due,false);
 assert.equal(enhanced.full_website_finished,false);
 assert.equal(aiRuns,1);
 const invalid=await buildPrivateAIWebsite(answers,{
- ...flagEnv,AI:{run:async()=>{aiRuns++;return {response:'not json'}}}
+ ...flagEnv,AI:{run:async()=>{aiRuns++;return {response:'This is not valid JSON content at all'}}}
 });
 assert.equal(invalid.ok,false);
 assert.equal(invalid.code,'INVALID_AI_JSON');
