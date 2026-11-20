@@ -7,6 +7,7 @@
  * or customer approval implied by a successful handoff.
  */
 import { buildWebsiteStarterBundle } from './site-bundle.mjs';
+import { aiDeveloperAvailable,buildPrivateAIWebsite } from './ai-website-developer.mjs';
 
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -49,21 +50,32 @@ export async function processDeveloperJob(db,projectId,env={}) {
   }catch{return {ok:false,reason:'Build job could not be claimed',accepted:false};}
   try {
     const a=JSON.parse(job.answers_json);
-    const result=buildWebsiteStarterBundle(a);
+    const useAI=aiDeveloperAvailable(env);
+    const enhanced=useAI?await buildPrivateAIWebsite(a,env):null;
+    if(useAI&&!enhanced?.ok)throw Error('AI generation failed and cannot be automatically retried');
+    const result=useAI?enhanced.bundle:buildWebsiteStarterBundle(a);
+    const generator=useAI?'cloudflare-workers-ai':'fixed-template';
+    const homepage=result.files.find(file=>file.path==='index.html')?.content;
+    if(typeof homepage!=='string'||homepage.length<200)throw Error('Missing private homepage');
     const output=JSON.stringify(result);
     if(output.length>230000)throw Error('Bundle too large');
     const now=new Date().toISOString();
     const statements=[
       db.prepare(
-        "UPDATE developer_build_jobs SET status='STARTER_READY',completed_at=?,output_json=?,error_code=NULL "+
+        "UPDATE developer_build_jobs SET status='STARTER_READY',completed_at=?,output_json=?,generator=?,error_code=NULL "+
         "WHERE project_id=? AND status='BUILDING' AND EXISTS "+
         "(SELECT 1 FROM projects WHERE id=? AND status IN ('NEW','REVIEWING') AND current_version=?)"
-      ).bind(now,output,projectId,projectId,job.current_version),
+      ).bind(now,output,generator,projectId,projectId,job.current_version),
+      db.prepare(
+        "UPDATE projects SET draft_html=?,generator=?,updated_at=?,row_version=row_version+1 "+
+        "WHERE id=? AND status IN ('NEW','REVIEWING') AND current_version=? "+
+        "AND EXISTS(SELECT 1 FROM developer_build_jobs WHERE project_id=? AND status='STARTER_READY')"
+      ).bind(homepage,generator,now,projectId,job.current_version,projectId),
       db.prepare(
         "INSERT INTO project_events(id,project_id,created_at,action,actor,details_json) "+
         "SELECT ?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM developer_build_jobs WHERE project_id=? AND status='STARTER_READY')"
       ).bind(crypto.randomUUID(),projectId,now,'PRIVATE_STARTER_PREPARED','developer',
-        '{"generated_by":"fixed-template","published":false}',projectId),
+        JSON.stringify({generator,published:false,owner_review_required:true}),projectId),
       db.prepare(
         "INSERT INTO owner_notifications(id,project_id,category,created_at) "+
         "SELECT ?,?,?,? WHERE EXISTS "+
@@ -71,12 +83,12 @@ export async function processDeveloperJob(db,projectId,env={}) {
       ).bind(crypto.randomUUID(),projectId,'READY_FOR_REVIEW',now,projectId)
     ];
     const recorded=await db.batch(statements);
-    if(recorded?.length!==3||recorded.some(x=>x?.meta?.changes!==1))
+    if(recorded?.length!==4||recorded.some(x=>x?.meta?.changes!==1))
       throw Error('Could not save the completed starter');
     return {ok:true,project_reference:projectId,status:'STARTER_READY',
-      developer_starter_ready:true,automated_builder:'fixed-template',
+      developer_starter_ready:true,automated_builder:generator,
       full_website_finished:false,customer_notified:false,
-      paid_ai_used:false,published:false};
+      paid_ai_used:useAI,published:false};
   }catch {
     try{
       await db.prepare(
