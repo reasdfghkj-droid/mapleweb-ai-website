@@ -6,7 +6,9 @@
  * fixed escaped templates. No PII is sent: only consented website requirements.
  *
  * FAIL CLOSED for cost: both agent-approval flags and a real AI binding are
- * required; disabled by default. Intended for the separately protected Manager.
+ * required; disabled by default. The separate customer contact fields are
+ * not sent, but freeform customer requirements may contain personal data:
+ * review consent, provider data handling and retention before activation.
  */
 import {buildWebsiteStarterBundle} from './site-bundle.mjs';
 
