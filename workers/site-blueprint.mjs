@@ -55,7 +55,7 @@ const pageSets={
 };
 function choosePageCount(answer){
  const s=text(answer,150).toLowerCase();
- if(/\b(?:8\s*\+|8\s*or\s*more|more\s*than\s*7|8\s*pages|9\s*pages|10\s*pages)\b/i.test(s))return 8;
+ if(/8\s*\+|8\s*or\s*more|more\s*than\s*7|8\s*pages|9\s*pages|10\s*pages/i.test(s))return 8;
  if(/\b(?:5\s*[–-]\s*7|6\s*pages|7\s*pages)\b/i.test(s))return 6;
  if(/\b(?:1\s*[–-]\s*2|1\s*page|2\s*pages)\b/i.test(s))return 2;
  return 4;
