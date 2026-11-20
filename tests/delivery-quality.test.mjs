@@ -121,7 +121,7 @@ assert.equal(pack.delivered_by_this_operation,false);
 assert.equal(pack.invoice_created,false);
 assert.ok(pack.text.includes('NOT a finished customer website'));
 assert.ok(pack.text.includes('No upfront payment'));
-assert.ok(pack.text.includes('Customer'));
+assert.ok(pack.text.includes('customer acceptance'));
 assert.equal((await getDeliveryQualityReadiness(db,{...project,current_version:4,quote_approved_version:4})).ready,false,
   'QA from version 3 must not approve version 4');
 assert.equal((await getDeliveryQualityReadiness(db,{...project,preview_verified:0})).ready,false);
