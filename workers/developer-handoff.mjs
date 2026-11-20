@@ -105,7 +105,7 @@ export async function processDeveloperJob(db,projectId,env={}) {
 export async function getDeveloperJobStatus(db,projectId) {
   if(!db?.prepare||!idOk(projectId))return {ok:false,status:'UNKNOWN'};
   const job=await db.prepare(
-    'SELECT status,created_at,started_at,completed_at,attempts,generator,error_code '+
+    'SELECT status,created_at,started_at,completed_at,attempts,manual_retries,generator,error_code '+
     'FROM developer_build_jobs WHERE project_id=?'
   ).bind(projectId).first();
   if(!job)return {ok:false,status:'NOT_FOUND'};
