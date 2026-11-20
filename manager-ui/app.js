@@ -57,6 +57,18 @@ async function refresh(){
     b.addEventListener('click',()=>load(p.id));list.append(b);
   }
 }
+async function refreshQueue(){
+  const data=await api('/api/manager/build-queue');
+  const wrap=$('agentQueue');wrap.replaceChildren();
+  $('queueCount').textContent='Pending: '+data.queued+' · In progress: '+data.building+' · Need attention: '+data.failed;
+  if(!data.jobs?.length){cell('p','No Developer Agent jobs yet.',wrap,'muted');return;}
+  for(const job of data.jobs){
+    const b=document.createElement('button');b.type='button';b.className='project';
+    cell('strong',job.status+' · '+job.generator,b);
+    cell('span','Project '+job.project_id.slice(0,8)+' · '+job.project_status,b);
+    b.addEventListener('click',()=>load(job.project_id));wrap.append(b);
+  }
+}
 async function load(id){
   try{
     const data=await api('/api/manager/projects/'+id);
@@ -68,6 +80,10 @@ async function load(id){
       :'No Developer build job was found for this project.';
     $('processBuilder').disabled=builder.status!=='QUEUED';
     $('downloadBuilder').disabled=builder.status!=='STARTER_READY';
+    $('markStalledBuild').disabled=builder.status!=='BUILDING';
+    $('retryTemplate').disabled=!(builder.status==='FAILED'&&
+      builder.generator==='fixed-template'&&builder.attempts===1&&
+      builder.manual_retries===0&&['NEW','REVIEWING'].includes(current.status));
     canDeleteAbandoned=data.abandoned_delete_eligibility?.allowed===true;
     $('deleteAbandoned').disabled=!canDeleteAbandoned;
     const details=$('details');details.replaceChildren();
@@ -99,7 +115,7 @@ async function load(id){
         ? 'All post-delivery checks passed. Only a reviewed sandbox draft can be created when enabled.'
         : 'Invoice blocked: '+(data.invoice_eligibility?.blockers||[]).join('; ')
     );
-    await refresh();
+    await Promise.all([refresh(),refreshQueue()]);
     notice('Project loaded. Actions use current version '+current.row_version+'.');
   }catch(e){notice(e.message,true);}
 }
@@ -112,16 +128,27 @@ $('connect').addEventListener('click',async()=>{
     if(!result.manager_only)throw Error('Manager status could not be verified.');
     $('workspace').hidden=false;$('disconnect').disabled=false;
     status('Connected to protected MapleWeb AI Manager. Private data stays in this tab.');
-    await Promise.all([refresh(),loadInbox()]);
+    await Promise.all([refresh(),loadInbox(),refreshQueue()]);
   }catch(e){token='';$('workspace').hidden=true;status(e.message,true);}
 });
 $('disconnect').addEventListener('click',()=>{
   token='';current=null;$('workspace').hidden=true;$('disconnect').disabled=true;
-  $('projects').replaceChildren();$('details').replaceChildren();$('inbox').replaceChildren();$('previewUrl').value='';
+  $('projects').replaceChildren();$('details').replaceChildren();$('inbox').replaceChildren();$('agentQueue').replaceChildren();$('previewUrl').value='';
   status('Disconnected. The token was cleared from memory.');
 });
 $('refresh').addEventListener('click',()=>refresh().catch(e=>notice(e.message,true)));
 $('refreshInbox').addEventListener('click',()=>loadInbox().catch(e=>notice(e.message,true)));
+$('refreshQueue').addEventListener('click',()=>refreshQueue().catch(e=>notice(e.message,true)));
+$('runTemplateBatch').addEventListener('click',async()=>{
+  if(!window.confirm('Prepare up to 2 PRIVATE fixed-template drafts? This requires the separately approved batch flag. AI charges, publishing, emails and payments remain disabled.'))return;
+  try{
+    const x=await api('/api/manager/run-template-batch',{
+      confirm:'RUN_APPROVED_PRIVATE_TEMPLATE_BATCH',limit:2
+    });
+    notice('Processed '+x.attempted+' queued jobs; '+x.starters_ready+' private starters prepared.');
+    await Promise.all([refresh(),refreshQueue(),loadInbox()]);
+  }catch(e){notice(e.message,true);}
+});
 $('record').addEventListener('click',async()=>{
   if(!current)return;
   const action=$('action').value;if(!action){notice('Choose a stage first.',true);return;}
@@ -215,13 +242,35 @@ $('deleteAbandoned').addEventListener('click',async()=>{
 });
 $('processBuilder').addEventListener('click',async()=>{
   if(!current)return;
-  if(!window.confirm('Prepare a PRIVATE starter website using only the consented customer brief? This never publishes a site or charges the customer.'))return;
+  if(!window.confirm('Prepare a PRIVATE website draft from the consented brief? If owner-approved AI Developer is active, AI usage costs may apply. No site will be published or customer charged.'))return;
   try{
     const x=await api('/api/manager/projects/'+current.id+'/process-build',{
       confirm:'PROCESS_PRIVATE_STARTER_ONLY',expectedRowVersion:current.row_version
     });
     if(!x.ok)throw Error(x.reason||'Developer queue is unavailable');
     notice('Private Developer starter prepared for owner review. No publication or payment.');
+    await load(current.id);
+  }catch(e){notice(e.message,true);}
+});
+$('markStalledBuild').addEventListener('click',async()=>{
+  if(!current||!window.confirm('Mark this job FAILED only if it has been stuck for 30+ minutes? This does NOT restart AI or charge anyone.'))return;
+  try{
+    const x=await api('/api/manager/projects/'+current.id+'/mark-stalled-build',{
+      confirm:'MARK_STALLED_JOB_FAILED',expectedRowVersion:current.row_version
+    });
+    if(!x.ok)throw Error(x.error||'Stalled job review blocked');
+    notice('Stalled job marked FAILED; owner review required. No automatic retries.');
+    await load(current.id);
+  }catch(e){notice(e.message,true);}
+});
+$('retryTemplate').addEventListener('click',async()=>{
+  if(!current||!window.confirm('Retry this FAILED fixed-template job ONCE? Paid AI jobs cannot be retried here.'))return;
+  try{
+    const x=await api('/api/manager/projects/'+current.id+'/retry-template',{
+      confirm:'RETRY_FAILED_TEMPLATE_ONCE',expectedRowVersion:current.row_version
+    });
+    if(!x.ok)throw Error(x.error||'Template retry blocked');
+    notice('A single template-only retry is queued; no AI charges or website publishing.');
     await load(current.id);
   }catch(e){notice(e.message,true);}
 });
