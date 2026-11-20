@@ -5,6 +5,7 @@ import {processLiveStripeWebhook} from './stripe-live.mjs';
 import { processDeveloperJob } from './developer-handoff.mjs';
 import { servePrivatePreview } from './private-previews.mjs';
 import {handleCustomerReview} from './customer-review.mjs';
+import {downloadCustomerWebsite} from './final-site-files.mjs';
 // Assets are served from the public directory through Cloudflare Workers Assets.
 const PRICES = Object.freeze([
   { id: 'simple-1-2', label: 'Simple 1–2 pages', min: 500, max: 800 },
@@ -284,6 +285,8 @@ export default {
         'Content-Security-Policy':"default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'none'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
       }});
     }
+    if(url.pathname.startsWith('/api/customer/review/')&&url.pathname.endsWith('/download'))
+      return downloadCustomerWebsite(req,env);
     if(url.pathname.startsWith('/api/customer/review/'))
       return handleCustomerReview(req,env);
     if (url.pathname.startsWith('/preview/')) return servePrivatePreview(req,env);
@@ -301,6 +304,7 @@ export default {
         publishing_enabled: false,
         live_stripe_invoice_enabled:false,
         customer_portal_enabled:env.CUSTOMER_PORTAL_APPROVED==='true'&&Boolean(env.DB),
+        final_site_downloads_enabled:env.FINAL_SITE_FILES_APPROVED==='true'&&Boolean(env.FINAL_SITE_BUCKET?.get),
       });
     }
     if (req.method === 'POST' && url.pathname === '/api/draft') {
