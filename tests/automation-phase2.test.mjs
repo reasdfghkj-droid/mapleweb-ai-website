@@ -93,12 +93,14 @@ const quotedPlan=planOwnerTransition(reviewing,'QUOTED',{
  approvedFinalTotalCadCents:90000,invoiceDueDays:14,quoteEvidenceReference:'signed/quote-1'
 },now);
 assert.equal(quotedPlan.ok,true);
+assert.equal(quotedPlan.fields.invoice_due_terms_accepted,0,'A quote is not customer acceptance');
 const quoted={...reviewing,...quotedPlan.fields};
 assert.equal(planOwnerTransition(quoted,'ACCEPTED',{},now).ok,false);
 const acceptedPlan=planOwnerTransition(quoted,'ACCEPTED',{
  customerQuoteAcceptanceReference:'customer/accepted-1'
 },now);
 assert.equal(acceptedPlan.ok,true);
+assert.equal(acceptedPlan.fields.invoice_due_terms_accepted,1,'Written customer acceptance is needed');
 assert.equal(acceptedPlan.fields.quote_acceptance_evidence_reference,'customer/accepted-1');
 const accepted={...quoted,...acceptedPlan.fields};
 assert.equal(planOwnerTransition(accepted,'BUILDING',{},now).ok,true);

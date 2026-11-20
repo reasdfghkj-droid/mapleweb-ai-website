@@ -287,6 +287,19 @@ $('downloadBuilder').addEventListener('click',async()=>{
     notice('Private Developer starter downloaded for review.');
   }catch(e){notice(e.message,true);}
 });
+$('downloadQuote').addEventListener('click',async()=>{
+  if(!current)return;
+  try{
+    const x=await api('/api/manager/projects/'+current.id+'/quote-pack');
+    if(!x.ok||!x.draft_text)throw Error(x.error||'Quote draft unavailable');
+    const blob=new Blob([x.draft_text],{type:'text/plain;charset=utf-8'});
+    const url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download='mapleweb-owner-quote-'+current.id.slice(0,8)+'.txt';
+    document.body.append(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    notice('Private quote draft downloaded. Review taxes, price, services and customer acceptance before sending.');
+  }catch(e){notice(e.message,true);}
+});
 $('approveInvoice').addEventListener('click',async()=>{
   if(!current)return;
   if(!window.confirm('Confirm the customer received the approved final website and you reviewed the final invoice amount and agreed terms?'))return;
