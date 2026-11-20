@@ -15,8 +15,13 @@ const lookupPath=(current,value)=>{
  const v=String(value||'').trim().replace(/&amp;/g,'&');
  if(!v||v.startsWith('#')||v.startsWith('?'))return {ignore:true};
  if(/^(?:mailto|tel):/i.test(v))return {ignore:true};
- if(/^https?:\/\//i.test(v)||v.startsWith('//'))return {external:true};
- if(/^data:image\/(?:png|jpeg|gif|webp|svg\+xml);base64,/i.test(v))
+ if(/^http:\/\//i.test(v))return {unsafe:true};
+ if(/^https:\/\//i.test(v)||v.startsWith('//')){
+  let host='external host';
+  try{host=new URL(v.startsWith('//')?'https:'+v:v).hostname.slice(0,80)}catch{/* no raw URL leakage */}
+  return {external:true,host};
+ }
+ if(/^data:image\/(?:png|jpeg|gif|webp);base64,/i.test(v))
   return {ignore:true};
  if(/^[a-z][a-z\d+.-]*:/i.test(v))
   return {unsafe:true};
@@ -62,7 +67,7 @@ function inspectReference(from,value,paths,blockers,warnings,kind){
   return;
  }
  if(resolved.external){
-  add(warnings,'EXTERNAL_SERVICE_NEEDS_REVIEW',from,kind+' points outside this website: '+value.slice(0,85));
+  add(warnings,'EXTERNAL_SERVICE_NEEDS_REVIEW',from,kind+' points to '+resolved.host+'; independently verify service and privacy');
   return;
  }
  if(resolved.unknownRoute){
