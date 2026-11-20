@@ -1,0 +1,81 @@
+name: MapleWeb Phase 7 final website delivery safety
+on:
+  push:
+    branches: [main, mapleweb-delivery-quality-gate-2026-11-19]
+    paths:
+      - 'workers/**'
+      - 'manager-ui/**'
+      - 'migrations/**'
+      - 'tests/**'
+      - '.github/workflows/phase7-delivery-quality.yml'
+  pull_request:
+    paths:
+      - 'workers/**'
+      - 'manager-ui/**'
+      - 'migrations/**'
+      - 'tests/**'
+      - '.github/workflows/phase7-delivery-quality.yml'
+permissions:
+  contents: read
+jobs:
+  safety:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate delivery QA and every prior customer automation safety suite
+        run: |
+          node tests/delivery-quality.test.mjs
+          node tests/owner-quote-pack.test.mjs
+          node tests/post-delivery.test.mjs
+          node tests/sales-studio.test.mjs
+          node tests/scope-pricing.test.mjs
+          node tests/chat-developer-handoff.test.mjs
+          node tests/agent-operations.test.mjs
+          node tests/private-preview-inbox.test.mjs
+          node tests/automation-phase2.test.mjs
+      - name: Validate D1 schema migrations 0001 to 0006 and versioned QA
+        run: |
+          python3 - <<'PY'
+          import sqlite3,pathlib,uuid
+          db=sqlite3.connect(':memory:')
+          db.execute('PRAGMA foreign_keys=ON')
+          for name in [
+            '0001_secure_sales_submissions.sql','0002_orders_projects_and_billing.sql',
+            '0003_private_previews_notifications.sql','0004_developer_handoff_queue.sql',
+            '0005_agent_recovery.sql','0006_delivery_quality_reviews.sql'
+          ]:
+            db.executescript(pathlib.Path('migrations',name).read_text())
+            print('PASS',name)
+          sid,pid=str(uuid.uuid4()),str(uuid.uuid4())
+          at='2026-11-19T18:00:00.000Z'
+          db.execute('INSERT INTO submissions(id,created_at,name,email,answers_json,status) VALUES (?,?,?,?,?,?)',
+            (sid,at,'Test buyer','test@example.com','{}','NEW'))
+          db.execute('INSERT INTO projects(id,submission_id,created_at,updated_at,draft_html) VALUES (?,?,?,?,?)',
+            (pid,sid,at,at,'<html>private</html>'))
+          fields='(project_id,version,created_at,delivery_method,final_artifact_reference,functional_test_reference,security_test_reference,mobile_accessibility_reference,ownership_handover_reference,customer_support_reference,checklist_json)'
+          values=(pid,1,at,'SOURCE_TRANSFER','delivery/file001','tests/features001',
+            'tests/security001','tests/mobile001','handover/owner001','handover/support001','{"completeWebsiteBuilt":true}')
+          db.execute('INSERT INTO delivery_quality_reviews '+fields+' VALUES (?,?,?,?,?,?,?,?,?,?,?)',values)
+          try:
+            db.execute('INSERT INTO delivery_quality_reviews '+fields+' VALUES (?,?,?,?,?,?,?,?,?,?,?)',values)
+            raise AssertionError('Duplicate version QA was allowed')
+          except sqlite3.IntegrityError:
+            print('PASS project and version uniqueness')
+          try:
+            db.execute('INSERT INTO delivery_quality_reviews '+fields+' VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+              (pid,2,at,'EMAIL',*values[4:]))
+            raise AssertionError('Invalid delivery method was allowed')
+          except sqlite3.IntegrityError:
+            print('PASS invalid delivery method blocked')
+          db.execute('DELETE FROM submissions WHERE id=?',(sid,))
+          assert db.execute('SELECT COUNT(*) FROM delivery_quality_reviews').fetchone()[0]==0
+          print('PASS deleting abandoned requests cascades to private delivery attestations')
+          PY
+      - name: Verify public and private Cloudflare Workers compile without deployment
+        run: |
+          npm install --no-audit --no-fund
+          npx wrangler deploy --dry-run --config wrangler.jsonc --outdir ./dist/public
+          npx wrangler deploy --dry-run --config wrangler.manager.jsonc --outdir ./dist/private

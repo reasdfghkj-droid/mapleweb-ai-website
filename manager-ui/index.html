@@ -58,6 +58,35 @@
 <h3>Customer quote and scope agreement</h3>
 <p class="muted">Prepare a written quote using the customer's actual website requirements, not their budget. No contract, email, invoice or payment is automatically sent.</p>
 <div class="buttons"><button id="downloadQuote" type="button" class="secondary">Download private quote draft</button></div>
+<h3>Final website delivery quality review</h3>
+<p class="muted">Only use this after a complete, separately tested customer website exists. An AI starter draft does NOT qualify. The quality review is manual owner evidence, not independent proof or customer acceptance.</p>
+<p id="deliveryQaStatus" role="status">Choose a project to check handover readiness.</p>
+<div class="grid">
+<div><label for="qaMethod">Final delivery method</label><select id="qaMethod">
+<option value="SOURCE_TRANSFER">Customer receives complete website source and files</option>
+<option value="HOSTED_WEBSITE">Customer receives working hosted website and access</option>
+</select></div>
+<div><label for="qaFinalArtifact">Real finished website artifact reference</label><input id="qaFinalArtifact" maxlength="180" placeholder="handover/finished-site-v1"></div>
+<div><label for="qaFunctionalTest">Functional feature test evidence reference</label><input id="qaFunctionalTest" maxlength="180" placeholder="tests/features-v1"></div>
+<div><label for="qaSecurityTest">Security and privacy test evidence reference</label><input id="qaSecurityTest" maxlength="180" placeholder="tests/security-v1"></div>
+<div><label for="qaMobileTest">Mobile and accessibility review reference</label><input id="qaMobileTest" maxlength="180" placeholder="tests/mobile-a11y-v1"></div>
+<div><label for="qaOwnership">Hosting, ownership and transfer reference</label><input id="qaOwnership" maxlength="180" placeholder="handover/ownership-v1"></div>
+<div><label for="qaSupport">Support and handover instructions reference</label><input id="qaSupport" maxlength="180" placeholder="handover/support-v1"></div>
+</div>
+<div class="checks">
+<label><input id="qaCompleteSite" type="checkbox"> Finished website exists (not merely an AI starter)</label>
+<label><input id="qaAllFeatures" type="checkbox"> All contracted website features have been implemented</label>
+<label><input id="qaContacts" type="checkbox"> Customer contact paths and forms have been tested</label>
+<label><input id="qaAccessibility" type="checkbox"> Mobile and accessibility review completed</label>
+<label><input id="qaSecurity" type="checkbox"> Security and privacy testing completed</label>
+<label><input id="qaOwnershipExplained" type="checkbox"> Hosting, domain, access and ownership explained</label>
+<label><input id="qaBackup" type="checkbox"> Files, backups and restore/transfer checked</label>
+<label><input id="qaHandover" type="checkbox"> Customer-ready handover package prepared</label>
+<label><input id="qaPaidIntegrations" type="checkbox"> All contracted paid integrations tested and disclosed (or not applicable)</label>
+<label><input id="qaNoDefects" type="checkbox"> No unresolved critical defects</label>
+</div>
+<div class="buttons"><button type="button" id="saveDeliveryQA" class="secondary">Record owner QA review for current version</button>
+<button type="button" id="downloadHandoverSummary" class="secondary">Download private handover checklist</button></div>
 <h3>After delivery: payments</h3><p id="invoiceAssessment" class="muted">Select a project to check eligibility.</p>
 <div class="buttons"><button type="button" id="approveInvoice" class="secondary">Approve post-delivery invoice review</button>
 <button type="button" id="sandboxInvoice" class="secondary">Create Stripe sandbox draft (test only)</button></div>
