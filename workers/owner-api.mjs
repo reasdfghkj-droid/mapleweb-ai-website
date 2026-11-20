@@ -5,6 +5,7 @@
  */
 import { ownerAuthed, parseBody } from './mapleweb-agents.mjs';
 import { createSandboxInvoiceDraft } from './stripe-invoices.mjs';
+import {prepareOwnerQuotePack} from '../billing/owner-quote-pack.mjs';
 import { buildWebsiteStarterBundle } from './site-bundle.mjs';
 import { createPrivatePreviewShare,revokePrivatePreviewShares } from './private-previews.mjs';
 import { listOwnerNotifications,markNotificationRead } from './owner-inbox.mjs';
@@ -69,7 +70,7 @@ export async function handleOwnerRequest(request,env={}) {
       const result=await markNotificationRead(env.DB,readMatch[1]);
       return json(result,result.ok?200:400);
     }
-    const match=/^\/api\/manager\/projects\/([0-9a-f-]{36})(?:\/(transition|improve-draft|invoice-assessment|approve-invoice|draft-test-invoice|bundle|preview-share|preview-revoke|preview-list|delete-request|builder-status|builder-output|process-build|mark-stalled-build|retry-template))?$/.exec(path);
+    const match=/^\/api\/manager\/projects\/([0-9a-f-]{36})(?:\/(transition|improve-draft|invoice-assessment|approve-invoice|draft-test-invoice|bundle|preview-share|preview-revoke|preview-list|delete-request|builder-status|builder-output|process-build|mark-stalled-build|retry-template|quote-pack))?$/.exec(path);
     if(!match||!validId(match[1]))return error('Not found',404);
     const id=match[1],operation=match[2]||'';
     const row=await rowOf(env.DB,id);
@@ -80,6 +81,16 @@ export async function handleOwnerRequest(request,env={}) {
       try{parsed.answers=JSON.parse(row.answers_json);}catch{parsed.answers={};}
       delete parsed.answers_json;
       return json({project:parsed,invoice_eligibility:invoiceAssessment(row),abandoned_delete_eligibility:abandonedDeletionEligibility(row),developer_build:await getDeveloperJobStatus(env.DB,id)});
+    }
+    if(request.method==='GET'&&operation==='quote-pack'){
+      let answers;
+      try{answers=JSON.parse(row.answers_json)}catch{return error('Stored requirements invalid',503);}
+      const pack=prepareOwnerQuotePack(answers,{
+        customerName:row.name,projectReference:id,
+        approvedFinalTotalCadCents:row.approved_final_total_cad_cents,
+        invoiceDueDays:row.invoice_due_days
+      });
+      return json(pack,pack.ok?200:409);
     }
     if(request.method==='GET'&&operation==='builder-status')
       return json(await getDeveloperJobStatus(env.DB,id));
