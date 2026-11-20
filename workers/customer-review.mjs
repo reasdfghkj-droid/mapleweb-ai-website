@@ -211,6 +211,20 @@ export async function handleCustomerReview(request,env={}) {
      payload?.version!==row.version||payload?.consent!==true)
    return resp({error:'Please confirm your decision and the exact website version'},400);
   const note=plainNote(payload.note);
+  if(/(?:password|passcode|secret(?:\s*key)?|api[_ -]?key|access[_ -]?token|private[_ -]?key)\s*(?::|is|=)\s*\S+/i.test(note)||
+     /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/.test(note))
+    return resp({error:'Remove passwords, API keys or credentials from your message'},400);
+  const cardRuns=note.match(/(?:\d[ -]?){13,19}/g)||[];
+  if(cardRuns.some(part=>{
+    const digits=part.replace(/\D/g,'');
+    if(digits.length<13||digits.length>19)return false;
+    let sum=0,twice=false;
+    for(let i=digits.length-1;i>=0;i--){
+      let digit=Number(digits[i]);if(twice){digit*=2;if(digit>9)digit-=9;}
+      sum+=digit;twice=!twice;
+    }
+    return sum%10===0;
+  }))return resp({error:'Do not include payment card numbers in your message'},400);
   if(decision==='REQUEST_CHANGES'&&note.length<8)
    return resp({error:'Explain the requested changes (at least eight characters)'},400);
   const at=new Date().toISOString(),responseId=crypto.randomUUID();
