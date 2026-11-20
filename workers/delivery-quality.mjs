@@ -124,7 +124,7 @@ export async function getDeliveryQualityReadiness(db,project) {
       'ownership_handover_reference,customer_support_reference,checklist_json,approved '+
       'FROM delivery_quality_reviews WHERE project_id=? AND version=?'
     ).bind(project.id,project.current_version).first();
-    if(!row||row.approved!==1||!methods.includes(row.delivery_method))
+    if(!row||row.version!==project.current_version||row.approved!==1||!methods.includes(row.delivery_method))
       return fail('No approved final website QA record for the current version');
     const verified=JSON.parse(row.checklist_json||'{}');
     if(checks.some(k=>verified[k]!==true))return fail('Final website QA checklist is incomplete');
