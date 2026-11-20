@@ -5,6 +5,7 @@
  * require an independently generated 32+ byte MANAGER_TOKEN.
  */
 import { handleOwnerRequest } from './owner-api.mjs';
+import {processApprovedTemplateBatch} from './agent-operations.mjs';
 export default {
   fetch(request,env,ctx) {
     const path=new URL(request.url).pathname;
@@ -20,5 +21,14 @@ export default {
     if(!path.startsWith('/api/manager/'))
       return new Response('Not found',{status:404});
     return handleOwnerRequest(request,env,ctx);
+  },
+  // Future Cloudflare Cron handler; there is NO Cron trigger in Wrangler yet.
+  // It never runs paid AI or publishes customer websites.
+  scheduled(controller,env,ctx){
+    if(env?.AUTO_AGENT_BATCH_APPROVED!=='true'||
+       env?.AUTO_BUILD_HANDOFF_APPROVED!=='true'||
+       env?.AI_DEVELOPER_APPROVED==='true')return;
+    if(typeof ctx?.waitUntil==='function')
+      ctx.waitUntil(processApprovedTemplateBatch(env,2));
   }
 };

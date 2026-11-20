@@ -13,6 +13,12 @@
 <button id="connect" type="button" class="primary">Connect to Manager</button>
 <button id="disconnect" type="button" class="secondary" disabled>Disconnect</button><p id="status" role="status" aria-live="polite">No private data has been loaded.</p></section>
 <div id="workspace" hidden>
+<section class="panel"><div class="line"><h2>Developer Agent work queue</h2><button id="refreshQueue" class="secondary" type="button">Refresh queue</button></div>
+<p class="muted">Private builder jobs only. AI generation requires separate owner approval; no websites, payments or customer messages are published here.</p>
+<p id="queueCount" class="statusLine" role="status">No queue data loaded.</p>
+<div id="agentQueue" class="project-list" role="list"></div>
+<div class="buttons"><button id="runTemplateBatch" class="secondary" type="button">Process up to 2 approved template jobs</button></div>
+</section>
 <section class="panel"><div class="line"><h2>New requests and project notices</h2><button id="refreshInbox" type="button" class="secondary">Refresh inbox</button></div>
 <p class="muted">These notifications stay inside the private Manager. No customer email or push notification has been sent.</p><div id="inbox" class="project-list" role="list"></div></section>
 <section class="layout"><div class="panel"><div class="line"><h2>Customer projects</h2><button type="button" id="refresh" class="secondary">Refresh</button></div>
@@ -46,7 +52,9 @@
 <h3>Website Developer Agent handoff</h3>
 <p id="builderStatus" class="muted">Select a project to inspect its saved build brief and private draft.</p>
 <div class="buttons"><button id="processBuilder" type="button" class="secondary" disabled>Prepare private starter from saved brief</button>
-<button id="downloadBuilder" type="button" class="secondary" disabled>Download completed Developer starter</button></div>
+<button id="downloadBuilder" type="button" class="secondary" disabled>Download completed Developer starter</button>
+<button id="markStalledBuild" type="button" class="secondary" disabled>Mark stalled job for review</button>
+<button id="retryTemplate" type="button" class="secondary" disabled>Retry failed template once</button></div>
 <h3>After delivery: payments</h3><p id="invoiceAssessment" class="muted">Select a project to check eligibility.</p>
 <div class="buttons"><button type="button" id="approveInvoice" class="secondary">Approve post-delivery invoice review</button>
 <button type="button" id="sandboxInvoice" class="secondary">Create Stripe sandbox draft (test only)</button></div>

@@ -1,0 +1,81 @@
+name: MapleWeb Phase 5 private Developer Agent tests
+on:
+  push:
+    branches: [main, mapleweb-agent-operations-phase5-2026-11-19]
+    paths:
+      - 'workers/**'
+      - 'manager-ui/**'
+      - 'migrations/**'
+      - 'tests/**'
+      - 'wrangler.manager.jsonc'
+      - '.github/workflows/phase5-agent-operations.yml'
+  pull_request:
+    paths:
+      - 'workers/**'
+      - 'manager-ui/**'
+      - 'migrations/**'
+      - 'tests/**'
+      - 'wrangler.manager.jsonc'
+      - '.github/workflows/phase5-agent-operations.yml'
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run all prior sales, customer handoff and payment safety tests
+        run: |
+          node tests/sales-studio.test.mjs
+          node tests/scope-pricing.test.mjs
+          node tests/chat-developer-handoff.test.mjs
+          node tests/private-preview-inbox.test.mjs
+          node tests/post-delivery.test.mjs
+          node tests/automation-phase2.test.mjs
+      - name: Run owner-only AI Developer and queue recovery tests
+        run: node tests/agent-operations.test.mjs
+      - name: Validate all five D1 migrations and safe once-only retry
+        run: |
+          python3 - <<'PY'
+          import sqlite3,pathlib,uuid
+          db=sqlite3.connect(':memory:')
+          db.execute('PRAGMA foreign_keys=ON')
+          files=[
+            '0001_secure_sales_submissions.sql',
+            '0002_orders_projects_and_billing.sql',
+            '0003_private_previews_notifications.sql',
+            '0004_developer_handoff_queue.sql',
+            '0005_agent_recovery.sql',
+          ]
+          for f in files:
+            db.executescript(pathlib.Path('migrations',f).read_text())
+            print('PASS',f)
+          project_columns={row[1] for row in db.execute('PRAGMA table_info(developer_build_jobs)')}
+          assert {'status','generator','manual_retries','attempts','output_json'}.issubset(project_columns)
+          sid,pid=str(uuid.uuid4()),str(uuid.uuid4())
+          when='2026-11-19T00:00:00.000Z'
+          db.execute('INSERT INTO submissions(id,created_at,name,email,answers_json,status) VALUES (?,?,?,?,?,?)',
+            (sid,when,'Test Buyer','test@example.com','{}','NEW'))
+          db.execute('INSERT INTO projects(id,submission_id,created_at,updated_at,draft_html) VALUES (?,?,?,?,?)',
+            (pid,sid,when,when,'<!doctype html>'))
+          db.execute('INSERT INTO developer_build_jobs(project_id,created_at) VALUES (?,?)',(pid,when))
+          assert db.execute('SELECT status,manual_retries FROM developer_build_jobs').fetchone()==('QUEUED',0)
+          db.execute("UPDATE developer_build_jobs SET status='FAILED',attempts=1 WHERE project_id=?",(pid,))
+          db.execute("UPDATE developer_build_jobs SET status='QUEUED',attempts=0,manual_retries=1 WHERE project_id=?",(pid,))
+          try:
+            db.execute("UPDATE developer_build_jobs SET manual_retries=2 WHERE project_id=?",(pid,))
+            assert False,'Retry cap missing'
+          except sqlite3.IntegrityError:
+            print('PASS database prevents second manual retry')
+          db.execute('DELETE FROM submissions WHERE id=?',(sid,))
+          assert db.execute('SELECT COUNT(*) FROM developer_build_jobs').fetchone()[0]==0
+          print('PASS private project deletion cascades through agent jobs')
+          PY
+      - name: Build both Cloudflare Workers without deploying or paying
+        run: |
+          npm install --no-audit --no-fund
+          npx wrangler deploy --dry-run --config wrangler.jsonc --outdir ./dist/public
+          npx wrangler deploy --dry-run --config wrangler.manager.jsonc --outdir ./dist/manager

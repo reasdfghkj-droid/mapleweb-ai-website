@@ -30,11 +30,14 @@ const contents={
  'faq.html':{h:'Questions and answers',p:'Add truthful answers about your hours, service area, policies, accessibility and typical projects.'},
  'contact.html':{h:'Get in touch',p:'Add a verified business email, phone, hours and location before publishing. Contact forms are not activated in this starter kit.'}
 };
-function makePage(filename,files,a) {
+function makePage(filename,files,a,custom={}) {
  const nav=files.map(p=>'<a href="'+p+'">'+escape(titles[p])+'</a>').join('');
  const brand=escape(a.business),label=escape(titles[filename]);
- const h=filename==='index.html'?'Welcome to '+brand:contents[filename].h;
- const intro=filename==='index.html'?escape(a.goal):escape(contents[filename].p);
+ const safe=(key,max=230)=>typeof custom[key]==='string'?custom[key].trim().slice(0,max):'';
+ const h=safe('heading')?escape(safe('heading')):filename==='index.html'?'Welcome to '+brand:escape(contents[filename].h);
+ const intro=safe('intro',400)?escape(safe('intro',400)):filename==='index.html'?escape(a.goal):escape(contents[filename].p);
+ const sectionHeading=escape(safe('sectionHeading',140)||'Built around your goals');
+ const sectionBody=escape(safe('sectionBody',350)||a.goal);
  let optional='';
  if(filename==='services.html'&&a.features){
    optional='<section><h2>Planned features</h2><p>'+escape(a.features)+'</p></section>';
@@ -51,25 +54,31 @@ function makePage(filename,files,a) {
    '<header><div class="shell"><strong class="brand">✦ '+brand+'</strong><nav aria-label="Main navigation">'+nav+'</nav></div></header>'+
    '<main class="shell" id="main"><span class="eyebrow">Private website starter · '+label+'</span>'+
    '<h1>'+h+'</h1><p class="intro">'+intro+'</p>'+
-   '<section><h2>Built around your goals</h2><p>'+escape(a.goal)+'</p></section>'+optional+
+   '<section><h2>'+sectionHeading+'</h2><p>'+sectionBody+'</p></section>'+optional+
    '<aside class="notice">Draft for customer review only. Replace all sample copy and verify features, privacy, contacts, and compliance before publication.</aside>'+
    '</main><footer><div class="shell">✦ '+brand+' · Private concept · Not published</div></footer></body></html>';
  return {path:filename,content};
 }
 const style='*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:#f9f6ef;color:#15392c;font:16px/1.65 system-ui,Arial,sans-serif}.shell{width:min(1000px,calc(100% - 40px));margin:auto}header,footer{background:#16392f;color:#f9deb1}header{padding:23px 0}header .shell{display:flex;justify-content:space-between;align-items:center;gap:25px;flex-wrap:wrap}.brand{font:700 1.35rem Georgia,serif}nav{display:flex;gap:13px;flex-wrap:wrap}nav a{color:#f4e3bc;text-decoration:none;font-size:.92rem;font-weight:650}nav a:hover{text-decoration:underline}.skip{position:absolute;left:-9999px}.skip:focus{left:12px;top:8px;background:#fff;padding:6px}main{padding:80px 0 100px}.eyebrow{text-transform:uppercase;letter-spacing:.14em;font-size:.73rem;color:#8d683a;font-weight:800}h1{font:400 clamp(2.4rem,7vw,4.8rem)/1.07 Georgia,serif;margin:20px 0}h2{font:400 1.65rem Georgia,serif}.intro{max-width:800px;font-size:1.17rem}section{background:white;border:1px solid #e1ccaa;border-radius:15px;padding:24px;margin:25px 0}.notice{border-left:4px solid #a17a3c;padding:12px 16px;background:#efe6d4;margin-top:35px;font-size:.92rem}footer{padding:24px 0;font-size:.85rem}@media(max-width:680px){main{padding:45px 0 65px}header{padding:18px 0}}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}';
 
-export function buildWebsiteStarterBundle(raw) {
+export function buildWebsiteStarterBundle(raw, options={}) {
+ // Optional AI copy is safe DATA, never code, and is escaped in every page.
+ // Only the private owner-approved Developer Agent may request AI generation.
+ const o=options&&typeof options==='object'&&!Array.isArray(options)?options:{};
+ const pageCopy=o.pageCopy&&typeof o.pageCopy==='object'&&!Array.isArray(o.pageCopy)?o.pageCopy:{};
+ const generatedBy=o.generatedBy==='cloudflare-workers-ai'?'cloudflare-workers-ai':'fixed-template';
  const a=clean(raw);
  if(!a.business||!a.goal)throw new Error('Business and goal are required');
  const files=pagesFor(a);
  return {
    kind:'mapleweb-private-website-source-bundle',
-   generated_by:'fixed-template',
+   generated_by:generatedBy,
+   requires_factual_review:true,
    published:false,deployable_without_review:false,
    requires_customer_approval:true,requires_owner_approval:true,
    advanced_integrations_connected:false,
    pages:files.length,
-   files:[...files.map(p=>makePage(p,files,a)),{path:'styles.css',content:style},
+   files:[...files.map(p=>makePage(p,files,a,pageCopy[p])),{path:'styles.css',content:style},
      {path:'MAPLEWEB_PRIVATE_BRIEF.txt',content:
        'OWNER REVIEW COPY - DO NOT PUBLISH\n\n'+
        keys.map(k=>k+': '+escape(a[k])).join('\n')+
