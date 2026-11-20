@@ -87,6 +87,22 @@
 </div>
 <div class="buttons"><button type="button" id="saveDeliveryQA" class="secondary">Record owner QA review for current version</button>
 <button type="button" id="downloadHandoverSummary" class="secondary">Download private handover checklist</button></div>
+<h3>Secure customer acceptance and handover</h3>
+<p class="muted">Create one-time private links for the intended customer. Each response is recorded for the exact project version. Links are never emailed automatically, and a quote or website is not approved until the customer explicitly responds.</p>
+<div class="grid">
+<div><label for="reviewPurpose">Customer review stage</label><select id="reviewPurpose">
+<option value="QUOTE">Written quote acceptance</option>
+<option value="FINAL_REVIEW">Finished website approval</option>
+<option value="DELIVERY_RECEIPT">Final website delivery receipt</option></select></div>
+<div><label for="handoverReference">Actual completed website handover reference (receipt stage only)</label>
+<input id="handoverReference" maxlength="180" placeholder="handover/sent-version-1"></div>
+</div>
+<div class="buttons"><button id="issueReview" type="button" class="secondary">Create one-time customer link</button>
+<button id="revokeReview" type="button" class="secondary">Revoke all active review links</button>
+<button id="clearReview" type="button" class="secondary">Clear private link</button></div>
+<label for="reviewUrl">One-time review link — send securely to the intended customer</label>
+<input id="reviewUrl" type="text" readonly autocomplete="off" placeholder="No review link created">
+<p id="reviewStatus" class="muted" role="status">No review link has been created in this session.</p>
 <h3>After delivery: payments</h3><p id="invoiceAssessment" class="muted">Select a project to check eligibility.</p>
 <div class="buttons"><button type="button" id="approveInvoice" class="secondary">Approve post-delivery invoice review</button>
 <button type="button" id="sandboxInvoice" class="secondary">Create Stripe sandbox draft (test only)</button></div>

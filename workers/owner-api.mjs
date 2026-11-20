@@ -9,6 +9,7 @@ import {prepareOwnerQuotePack} from '../billing/owner-quote-pack.mjs';
 import {recordDeliveryQualityReview,getDeliveryQualityReadiness,preparePrivateHandoverSummary} from './delivery-quality.mjs';
 import { buildWebsiteStarterBundle } from './site-bundle.mjs';
 import { createPrivatePreviewShare,revokePrivatePreviewShares } from './private-previews.mjs';
+import {issueCustomerReviewLink,listCustomerReviewLinks,revokeCustomerReviewLinks,receiptRecorded} from './customer-review.mjs';
 import { listOwnerNotifications,markNotificationRead } from './owner-inbox.mjs';
 import { abandonedDeletionEligibility,deleteAbandonedRequest } from './order-retention.mjs';
 import { getDeveloperJobStatus,getPrivateStarterBundle,processDeveloperJob } from './developer-handoff.mjs';
@@ -71,7 +72,7 @@ export async function handleOwnerRequest(request,env={}) {
       const result=await markNotificationRead(env.DB,readMatch[1]);
       return json(result,result.ok?200:400);
     }
-    const match=/^\/api\/manager\/projects\/([0-9a-f-]{36})(?:\/(transition|improve-draft|invoice-assessment|approve-invoice|draft-test-invoice|bundle|preview-share|preview-revoke|preview-list|delete-request|builder-status|builder-output|process-build|mark-stalled-build|retry-template|quote-pack|delivery-quality|delivery-review|handover-summary))?$/.exec(path);
+    const match=/^\/api\/manager\/projects\/([0-9a-f-]{36})(?:\/(transition|improve-draft|invoice-assessment|approve-invoice|draft-test-invoice|bundle|preview-share|preview-revoke|preview-list|delete-request|builder-status|builder-output|process-build|mark-stalled-build|retry-template|quote-pack|delivery-quality|delivery-review|handover-summary|issue-review|review-links|revoke-review-links))?$/.exec(path);
     if(!match||!validId(match[1]))return error('Not found',404);
     const id=match[1],operation=match[2]||'';
     const row=await rowOf(env.DB,id);
@@ -82,6 +83,10 @@ export async function handleOwnerRequest(request,env={}) {
       try{parsed.answers=JSON.parse(row.answers_json);}catch{parsed.answers={};}
       delete parsed.answers_json;
       return json({project:parsed,invoice_eligibility:invoiceAssessment(row),abandoned_delete_eligibility:abandonedDeletionEligibility(row),developer_build:await getDeveloperJobStatus(env.DB,id),delivery_quality:await getDeliveryQualityReadiness(env.DB,row)});
+    }
+    if(request.method==='GET'&&operation==='review-links'){
+      const result=await listCustomerReviewLinks(env.DB,id);
+      return json(result,result.ok?200:409);
     }
     if(request.method==='GET'&&operation==='delivery-quality')
       return json(await getDeliveryQualityReadiness(env.DB,row));
@@ -119,6 +124,19 @@ export async function handleOwnerRequest(request,env={}) {
     if(request.method==='GET'&&operation==='invoice-assessment')
       return json({project_reference:id,assessment:invoiceAssessment(row)});
     if(request.method!=='POST')return error('Method not allowed',405);
+    if(operation==='issue-review'){
+      const payload=await parseBody(request,2200);
+      const result=await issueCustomerReviewLink(env.DB,row,env,payload);
+      return json(result,result.ok?200:409);
+    }
+    if(operation==='revoke-review-links'){
+      const payload=await parseBody(request,600);
+      if(payload?.confirm!=='REVOKE_ALL_CUSTOMER_REVIEW_LINKS'||
+         payload?.expectedRowVersion!==row.row_version)
+        return error('Confirm the current project before revoking private links',409);
+      const result=await revokeCustomerReviewLinks(env.DB,id);
+      return json(result,result.ok?200:409);
+    }
     if(operation==='delivery-review'){
       const payload=await parseBody(request,4500);
       if(!payload||typeof payload!=='object')return error('Invalid final website QA request');
@@ -180,6 +198,16 @@ export async function handleOwnerRequest(request,env={}) {
       if(!Number.isSafeInteger(payload.expectedRowVersion)||payload.expectedRowVersion!==row.row_version)
         return error('Project has changed. Reload before proceeding.',409);
       if(payload.action==='DELIVERED'){
+        if(env.CUSTOMER_PORTAL_APPROVED==='true'){
+          const receipt=await receiptRecorded(env.DB,row);
+          if(!receipt.ok)return json({error:'Customer must acknowledge final website handover through the secure review portal'},409);
+          if(row.customer_approved_version!==row.current_version||
+             !row.customer_approval_evidence_reference)
+            return json({error:'The customer has not approved the delivered version'},409);
+          payload.customerReceiptEvidenceReference=receipt.evidence_reference;
+          payload.customerApprovalEvidenceReference=row.customer_approval_evidence_reference;
+          payload.customerApproved=true;
+        }
         const ready=await getDeliveryQualityReadiness(env.DB,row);
         if(!ready.ok||!ready.ready||ready.version!==row.current_version)
           return json({error:'Final website delivery QA has not been approved for this version',

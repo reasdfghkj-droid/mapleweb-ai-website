@@ -10,7 +10,8 @@
     "run_worker_first": [
       "/health",
       "/api/*",
-      "/preview/*"
+      "/preview/*",
+      "/review/*"
     ],
     "not_found_handling": "404-page"
   },
@@ -18,6 +19,7 @@
     "SUBMISSIONS_APPROVED": "false",
     "RETENTION_DAYS": "30",
     "PRIVATE_PREVIEWS_APPROVED": "false",
-    "AUTO_BUILD_HANDOFF_APPROVED": "false"
+    "AUTO_BUILD_HANDOFF_APPROVED": "false",
+    "CUSTOMER_PORTAL_APPROVED": "false"
   }
 }
