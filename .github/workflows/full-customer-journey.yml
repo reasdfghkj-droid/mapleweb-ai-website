@@ -1,0 +1,46 @@
+name: MapleWeb full database customer journey integration
+on:
+  push:
+    branches: [main, mapleweb-sqlite-integration-audit-2026-11-19]
+    paths:
+      - 'workers/**'
+      - 'billing/**'
+      - 'migrations/**'
+      - 'tests/**'
+      - '.github/workflows/full-customer-journey.yml'
+  pull_request:
+    paths:
+      - 'workers/**'
+      - 'billing/**'
+      - 'migrations/**'
+      - 'tests/**'
+      - '.github/workflows/full-customer-journey.yml'
+permissions:
+  contents: read
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Real SQLite with all nine Cloudflare D1 migrations (no external services)
+        run: node --disable-warning=ExperimentalWarning tests/full-system-sqlite.test.mjs
+      - name: Run independent security, payment and customer regressions
+        run: |
+          node tests/customer-email.test.mjs
+          node tests/customer-review.test.mjs
+          node tests/live-stripe.test.mjs
+          node tests/delivery-quality.test.mjs
+          node tests/agent-operations.test.mjs
+          node tests/owner-quote-pack.test.mjs
+          node tests/final-site-files.test.mjs
+          node tests/automation-phase2.test.mjs
+          node tests/chat-developer-handoff.test.mjs
+          node tests/private-preview-inbox.test.mjs
+      - name: Build protected Workers without deploying
+        run: |
+          npm install --no-audit --no-fund
+          npx wrangler deploy --dry-run --config wrangler.jsonc --outdir ./dist/public
+          npx wrangler deploy --dry-run --config wrangler.manager.jsonc --outdir ./dist/private
