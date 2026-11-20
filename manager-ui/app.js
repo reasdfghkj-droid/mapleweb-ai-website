@@ -73,6 +73,13 @@ async function load(id){
   try{
     const data=await api('/api/manager/projects/'+id);
     current=data.project;
+    const qa=data.delivery_quality||{};
+    $('deliveryQaStatus').textContent=qa.ready
+      ?'Owner QA recorded for version '+qa.version+' · '+qa.delivery_method+
+        '. Customer acceptance and actual delivery still require separate evidence.'
+      :'Not ready to record delivery: '+(qa.reason||'Final QA review missing');
+    $('saveDeliveryQA').disabled=current.status!=='PREVIEW_READY'||qa.ready===true;
+    $('downloadHandoverSummary').disabled=qa.ready!==true;
     const builder=data.developer_build||{};
     $('builderStatus').textContent=builder.ok
       ?'Developer job: '+builder.status+' · '+(builder.generator||'fixed-template')+
@@ -298,6 +305,52 @@ $('downloadQuote').addEventListener('click',async()=>{
     document.body.append(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),1000);
     notice('Private quote draft downloaded. Review taxes, price, services and customer acceptance before sending.');
+  }catch(e){notice(e.message,true);}
+});
+$('saveDeliveryQA').addEventListener('click',async()=>{
+  if(!current||current.status!=='PREVIEW_READY')return;
+  if(!window.confirm('I confirm a COMPLETE finished website exists, and I personally reviewed the listed evidence. This is NOT customer approval, real delivery or an invoice.'))return;
+  const values={
+    deliveryMethod:$('qaMethod').value,
+    finalArtifactReference:$('qaFinalArtifact').value.trim(),
+    functionalTestReference:$('qaFunctionalTest').value.trim(),
+    securityTestReference:$('qaSecurityTest').value.trim(),
+    mobileAccessibilityReference:$('qaMobileTest').value.trim(),
+    ownershipHandoverReference:$('qaOwnership').value.trim(),
+    customerSupportReference:$('qaSupport').value.trim(),
+    completeWebsiteBuilt:$('qaCompleteSite').checked,
+    allContractedFeaturesImplemented:$('qaAllFeatures').checked,
+    customerContactPathsTested:$('qaContacts').checked,
+    mobileAndAccessibilityReviewed:$('qaAccessibility').checked,
+    securityAndPrivacyTested:$('qaSecurity').checked,
+    domainHostingAndOwnershipExplained:$('qaOwnershipExplained').checked,
+    backupsAndFilesVerified:$('qaBackup').checked,
+    customerHandoverPrepared:$('qaHandover').checked,
+    paidIntegrationsConfirmed:$('qaPaidIntegrations').checked,
+    noOpenCriticalDefects:$('qaNoDefects').checked,
+    currentVersion:current.current_version,
+    expectedRowVersion:current.row_version,
+    confirm:'REVIEW_FINAL_WEBSITE_QA'
+  };
+  try{
+    const result=await api('/api/manager/projects/'+current.id+'/delivery-review',values);
+    if(!result.ok)throw Error(result.reason||'Final website QA review blocked');
+    notice('Owner QA recorded for version '+result.version+
+      '. Obtain separate customer and owner approval plus delivery receipt before invoice eligibility.');
+    await load(current.id);
+  }catch(e){notice(e.message,true);}
+});
+$('downloadHandoverSummary').addEventListener('click',async()=>{
+  if(!current)return;
+  try{
+    const result=await api('/api/manager/projects/'+current.id+'/handover-summary');
+    if(!result.ok||!result.text)throw Error(result.reason||'Handover checklist unavailable');
+    const blob=new Blob([result.text],{type:'text/plain;charset=utf-8'});
+    const url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download='mapleweb-private-handover-'+current.id.slice(0,8)+'.txt';
+    document.body.append(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    notice('Private QA checklist saved for review; it is not proof of delivery or payment.');
   }catch(e){notice(e.message,true);}
 });
 $('approveInvoice').addEventListener('click',async()=>{
