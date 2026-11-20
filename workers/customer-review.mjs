@@ -153,7 +153,7 @@ async function findValidReview(db,hash) {
  const row=await db.prepare(
   'SELECT t.id AS token_id,t.project_id,t.version,t.purpose,t.expires_at,t.handover_reference,'+
   'p.status,p.current_version,p.row_version,p.quote_approved_version,p.quote_accepted_at,'+
-  'p.approved_final_total_cad_cents,p.invoice_due_days,p.customer_approved_version,'+
+  'p.approved_final_total_cad_cents,p.invoice_due_days,p.quote_evidence_reference,p.customer_approved_version,'+
   'p.customer_approval_evidence_reference,p.preview_verified,p.security_check_passed,'+
   'p.outstanding_revisions,p.invoice_status,p.stripe_invoice_id '+
   'FROM customer_review_tokens t JOIN projects p ON p.id=t.project_id '+
