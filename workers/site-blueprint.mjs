@@ -12,8 +12,8 @@ const REG={
  restaurant:/(?:\b(restauran(?:t|ts)|cafe|coffee|bakery|bistro|catering|food|pizza|diner)\b|\bcafé)/i,
  wellness:/\b(salon|barber|spa|beauty|massage|wellness|nail|hair|fitness|gym|yoga)\b/i,
  retail:/\b(shop|store|retail|boutique|product|clothing|merchandise|ecommerce|e-commerce)\b/i,
- professional:/\b(account|law|legal|consult|advisor|finance|bookkeep|clinic|dentist|realtor|real estate|insurance)\b/i,
- trades:/\b(plumb|electri|renovation|landscap|cleaning|repair|contractor|roof|home service)\b/i
+ professional:/\b(account(?:ing|ant|ancy)?|law(?:yer)?|legal|consult(?:ing|ant)?|advis(?:or|ory)|financ(?:e|ial)|bookkeep(?:ing|er)?|clinic|dentist|realtor|real estate|insurance)\b/i,
+ trades:/\b(plumb(?:er|ing)?|electri(?:cal|cian|city)?|renovation|landscap(?:e|er|ing)?|cleaning|repair|contractor|roof(?:er|ing)?|home services?)\b/i
 };
 const THEMES={
  classic:{
