@@ -422,6 +422,21 @@ $('issueReview').addEventListener('click',async()=>{
     notice('Private link prepared. It has NOT been emailed to the customer.');
   }catch(e){notice(e.message,true);}
 });
+$('sendReviewEmail').addEventListener('click',async()=>{
+  if(!current||!$('reviewUrl').value)return notice('Create and copy the private review link first.',true);
+  if(!window.confirm('Send this SINGLE-use project review link to the customer email stored in their project? This is a real transactional email, not a payment request. It requires a verified sender/provider and may incur email service charges.'))return;
+  try{
+    const result=await api('/api/manager/projects/'+current.id+'/send-review-email',{
+      confirm:'SEND_OWNER_APPROVED_REVIEW_EMAIL',
+      expectedRowVersion:current.row_version,
+      reviewUrl:$('reviewUrl').value
+    });
+    if(!result.ok)throw Error(result.error||'Customer email send unavailable');
+    notice('Email provider accepted the review invitation ('+result.provider_message_id+
+      '). Actual inbox delivery is not confirmed. The link cannot be re-emailed automatically.');
+    $('reviewStatus').textContent='Review link submitted to verified customer email provider. No invoice or customer charge occurred.';
+  }catch(e){notice(e.message,true);}
+});
 $('revokeReview').addEventListener('click',async()=>{
   if(!current)return;
   if(!window.confirm('Revoke ALL active quote, final-review and receipt links for this project?'))return;
